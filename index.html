@@ -1,0 +1,2024 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<meta name="description" content="Tandai foto dengan titik, lingkaran, garis, panah, dan teks untuk menyusun strategi — langsung dari browser." />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#FDFCF8" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1D1B26" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="COC Strategy" />
+<link rel="manifest" href="assets/manifest.webmanifest" />
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png" />
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+<title>COC Strategy — Tandai Foto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Reenie+Beanie&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#FDFCF8;
+    --surface:#FFFFFF;
+    --surface-2:#EFEDF4;
+    --ink:#2B2938;
+    --ink-soft:#5D5A72;
+    --line:#E4E1EC;
+    --accent:#6F66A3;
+    --accent-strong:#574E8A;
+    --accent-soft:#E6E6FA;
+    --danger:#C0392B;
+    --canvas-bg:#ECEAE2;
+    --shadow:0 10px 30px rgba(43,41,56,.08), 0 2px 8px rgba(43,41,56,.06);
+    --radius:20px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1D1B26;
+      --surface:#292633;
+      --surface-2:#332F45;
+      --ink:#F1EFF8;
+      --ink-soft:#B6B1C9;
+      --line:#3E3A52;
+      --accent:#A79ED6;
+      --accent-strong:#C4BDE8;
+      --accent-soft:#3A3554;
+      --danger:#FF8A7A;
+      --canvas-bg:#14121B;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;overscroll-behavior:none}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Outfit",system-ui,-apple-system,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button,[role="button"],select,input:not([type="checkbox"]){min-height:2.25rem}
+  button{font-family:inherit;cursor:pointer;touch-action:manipulation}
+  :focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:8px}
+
+  .app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    display:flex;align-items:center;gap:8px;flex-wrap:nowrap;overflow-x:auto;
+    padding:10px 14px;background:var(--surface);scrollbar-width:none;touch-action:pan-x;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+    border-bottom:1px solid var(--line);z-index:30;
+  }
+  .topbar::-webkit-scrollbar{display:none}
+  .tb-group{display:flex;align-items:center;gap:6px;flex:none}
+  .tb-sep{width:1px;align-self:stretch;background:var(--line);margin:2px 2px}
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink);
+    border-radius:12px;padding:7px 12px;font-size:14px;font-weight:600;
+    min-height:40px;transition:background .15s,border-color .15s;
+  }
+  .btn:hover{background:var(--surface-2)}
+  .btn:disabled{opacity:.38;cursor:default}
+  .btn:disabled:hover{background:var(--surface)}
+  label.btn{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;touch-action:manipulation}
+  input.file-input{display:none}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent-strong)}
+  #btnInstall[hidden]{display:none}
+  .btn.icon{padding:7px 9px}
+  .btn svg{width:18px;height:18px;flex:none}
+  .zoom-label{min-width:52px;text-align:center;font-weight:600;font-size:14px;font-variant-numeric:tabular-nums}
+  .spacer{flex:1}
+
+  /* ---------- Workspace ---------- */
+  .workspace{flex:1;display:flex;min-height:0}
+
+  /* Tools rail */
+  .rail{
+    width:64px;flex:none;background:var(--surface);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0;overflow-y:auto;z-index:20;touch-action:pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  }
+  .tool{
+    width:46px;height:46px;border-radius:14px;border:1px solid transparent;
+    background:transparent;color:var(--ink);display:flex;align-items:center;justify-content:center;
+    position:relative;
+  }
+  .tool:hover{background:var(--surface-2)}
+  .tool.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-strong)}
+  .tool svg{width:23px;height:23px}
+  .tool .tip{
+    position:absolute;left:56px;top:50%;transform:translateY(-50%);
+    background:var(--ink);color:var(--bg);font-size:12px;font-weight:600;
+    padding:5px 9px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s;z-index:50;
+  }
+  .tool:hover .tip{opacity:1}
+  .rail-sep{width:30px;height:1px;background:var(--line);margin:5px 0}
+
+  /* Canvas stage */
+  .stage-wrap{flex:1;position:relative;min-width:0;background:var(--canvas-bg);overflow:hidden}
+  #stage{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+  #stage.tool-draw{cursor:crosshair}
+  #stage.tool-pan{cursor:grab}
+  #stage.tool-pan:active{cursor:grabbing}
+  #stage.tool-text{cursor:text}
+  .hint{
+    position:absolute;left:10px;bottom:10px;max-width:min(400px,calc(100% - 64px));
+    background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);
+    padding:5px 6px 5px 12px;font-size:12.5px;line-height:1.35;color:var(--ink-soft);z-index:10;
+    display:flex;align-items:center;gap:8px;pointer-events:none;
+  }
+  .hint[hidden]{display:none}
+  .hint strong{color:var(--ink)}
+  .hint-text{flex:1;min-width:0}
+  .hint-close{
+    width:26px;height:26px;min-height:26px;flex:none;border:none;border-radius:50%;
+    background:var(--surface-2);color:var(--ink-soft);padding:0;pointer-events:auto;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .hint-close:hover{color:var(--ink)}
+  .hint-close svg{width:13px;height:13px}
+  .hint-reopen{
+    position:absolute;left:10px;bottom:10px;width:34px;height:34px;min-height:34px;z-index:10;
+    border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--accent-strong);
+    box-shadow:var(--shadow);font-weight:800;font-size:15px;padding:0;line-height:1;
+  }
+  .hint-reopen[hidden]{display:none}
+  .empty-state{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;z-index:5;
+  }
+  .empty-card{
+    background:var(--surface);border:2px dashed var(--accent);border-radius:28px;box-shadow:var(--shadow);
+    padding:34px 30px;text-align:center;max-width:420px;width:100%;
+  }
+  .empty-card.dragging{background:var(--accent-soft)}
+  .empty-card h1{font-size:22px;margin:0 0 8px;font-weight:700}
+  .empty-card p{margin:0 0 18px;color:var(--ink-soft);font-size:14.5px;line-height:1.55}
+  .empty-card .btn{justify-content:center}
+  .empty-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .text-editor{
+    position:absolute;z-index:40;display:none;
+    background:var(--surface);border:2px solid var(--accent);border-radius:10px;
+    padding:6px 10px;font-family:inherit;font-weight:600;color:var(--ink);
+    box-shadow:var(--shadow);min-width:140px;
+  }
+
+  /* Side panel */
+  .panel{
+    width:250px;flex:none;background:var(--surface);border-left:1px solid var(--line);
+    overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:14px;z-index:20;position:relative;touch-action:pan-y;overscroll-behavior:contain;
+  }
+  .layers-toggle{display:none}
+  .lbl-short{display:none}
+  .panel h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 10px;font-weight:700}
+  .color-menu{position:relative}
+  .color-trigger{
+    width:100%;display:flex;align-items:center;gap:10px;text-align:left;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink);
+    border-radius:14px;padding:8px 10px;min-height:50px;
+  }
+  .color-trigger:hover{background:var(--surface-2)}
+  .color-dot{
+    width:30px;height:30px;border-radius:50%;flex:none;
+    border:2px solid var(--line);box-shadow:inset 0 0 0 2px var(--surface);
+  }
+  .color-trigger-meta{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+  .color-trigger-meta strong{font-size:14px;font-weight:700}
+  .color-trigger-meta span{font-size:12px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.04em}
+  .color-trigger .chev{width:18px;height:18px;flex:none;color:var(--ink-soft);transition:transform .15s}
+  .color-trigger[aria-expanded="true"] .chev{transform:rotate(180deg)}
+  .color-popover{
+    position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:60;
+    background:var(--surface);border:1px solid var(--line);border-radius:16px;
+    box-shadow:var(--shadow);padding:12px;
+  }
+  .color-popover[hidden]{display:none}
+  .color-popover p{margin:0 0 10px;font-size:12.5px;font-weight:700;color:var(--ink-soft);letter-spacing:.06em;text-transform:uppercase}
+  .swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;justify-items:center}
+  .swatch{
+    width:38px;height:38px;border-radius:50%;border:2px solid var(--line);padding:0;min-height:38px;
+  }
+  .swatch.active{border-color:var(--ink);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ink)}
+  .color-row{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+  .color-row input[type="color"]{width:44px;height:38px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:3px;cursor:pointer}
+  .color-row span{font-size:13.5px;color:var(--ink-soft)}
+  .field{margin-top:14px}
+  .field label{display:flex;justify-content:space-between;font-size:13.5px;font-weight:600;margin-bottom:6px}
+  .field label output{color:var(--ink-soft);font-variant-numeric:tabular-nums}
+  .field input[type="range"]{width:100%;accent-color:var(--accent);min-height:28px}
+  .check{
+    display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500;
+    padding:9px 0;cursor:pointer;min-height:40px;
+  }
+  .check input{width:19px;height:19px;accent-color:var(--accent)}
+  .mini-row{display:flex;gap:6px;flex-wrap:wrap}
+  .mini-row .btn{flex:1;padding:7px 6px;font-size:13px;justify-content:center}
+  .sel-info{font-size:13px;font-weight:700;color:var(--ink);margin:0 0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sel-actions{display:flex;gap:6px;flex-wrap:wrap}
+  .sel-actions .btn{flex:1;padding:6px 8px;font-size:12.5px;min-height:36px;justify-content:center;border-radius:10px;white-space:nowrap}
+  .sel-actions .sel-del{color:var(--danger);border-color:var(--danger)}
+  .sel-actions .sel-close{flex:0 0 36px;width:36px;padding:0;color:var(--ink-soft)}
+  .sel-actions .sel-close svg{width:14px;height:14px}
+
+  .layers{display:flex;flex-direction:column;gap:6px}
+  .layer{
+    display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:12px;
+    padding:6px 8px;background:var(--surface);cursor:pointer;min-height:44px;
+  }
+  .layer.active{border-color:var(--accent);background:var(--accent-soft)}
+  .layer .lname{flex:1;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .layer .lcolor{width:14px;height:14px;border-radius:50%;flex:none;border:1px solid rgba(0,0,0,.18)}
+  .layer button{
+    width:32px;height:32px;min-height:32px;border:none;background:transparent;border-radius:8px;
+    color:var(--ink-soft);display:flex;align-items:center;justify-content:center;padding:0;flex:none;
+  }
+  .layer button:hover{background:var(--surface-2);color:var(--ink)}
+  .layer button svg{width:16px;height:16px}
+  .layer.hidden-shape .lname{opacity:.45;text-decoration:line-through}
+  .layers-empty{font-size:13.5px;color:var(--ink-soft);margin:0;line-height:1.55}
+
+  .toast{
+    position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);
+    background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;
+    padding:11px 18px;border-radius:14px;box-shadow:var(--shadow);
+    opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:100;max-width:calc(100vw - 32px);text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* Save sheet (jalur simpan PNG di HP) */
+  .save-sheet{
+    position:fixed;inset:0;z-index:120;background:rgba(24,22,36,.55);
+    display:flex;align-items:center;justify-content:center;padding:16px;
+  }
+  .save-sheet[hidden]{display:none}
+  .save-card{
+    background:var(--surface);border-radius:24px;box-shadow:var(--shadow);
+    max-width:440px;width:100%;padding:20px;max-height:92dvh;overflow-y:auto;
+  }
+  .save-card h2{margin:0 0 6px;font-size:18px}
+  .save-card p{margin:0 0 12px;font-size:14px;line-height:1.5;color:var(--ink-soft)}
+  .save-card p strong{color:var(--ink)}
+  .save-card img{
+    width:100%;max-height:46dvh;object-fit:contain;background:var(--canvas-bg);
+    border:1px solid var(--line);border-radius:14px;display:block;
+  }
+  .save-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .save-actions .btn{flex:1;justify-content:center}
+  .save-tip{margin:12px 0 0 !important;font-size:12.5px !important}
+
+  @media (max-width:900px){
+    .app{height:100dvh;overflow:hidden}
+    .workspace{flex-direction:column;min-height:0}
+    .rail{
+      width:100%;flex-direction:row;flex-wrap:nowrap;border-right:none;border-bottom:1px solid var(--line);
+      padding:6px 10px;overflow-x:auto;overflow-y:hidden;justify-content:flex-start;scrollbar-width:none;touch-action:pan-x;overscroll-behavior-x:contain;
+    }
+    .rail::-webkit-scrollbar{display:none}
+    .rail-sep{display:none}
+    .tool{flex:none;width:44px;height:44px}
+    .tool .tip{display:none}
+    /* Kanvas mengambil semua sisa tinggi layar */
+    .stage-wrap{flex:1;height:auto;min-height:0}
+    /* Warna & Gaya: SATU bilah tipis 54px di bawah, digeser menyamping.
+       Tidak ada lagi tumpukan slider/checklist yang menggerus kanvas. */
+    .panel{
+      width:100%;flex:none;border-left:none;border-top:1px solid var(--line);
+      padding:0;gap:0;overflow:visible;display:block;height:54px;max-height:54px;
+    }
+    .panel h2{font-size:12px;margin-bottom:6px}
+    .style-section{
+      display:flex;flex-wrap:nowrap;align-items:center;gap:10px;height:54px;
+      overflow-x:auto;overflow-y:hidden;padding:6px 8px;scrollbar-width:none;touch-action:pan-x;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+    }
+    .style-section::-webkit-scrollbar{display:none}
+    .style-section h2{display:none}
+    .style-section .color-menu{flex:none}
+    .style-section .color-trigger{min-height:38px;height:38px;padding:4px 9px;border-radius:999px;gap:7px;width:auto}
+    .style-section .color-dot{width:22px;height:22px}
+    .style-section .color-trigger-meta strong{font-size:12.5px;line-height:1}
+    .style-section .color-trigger-meta span{display:none}
+    .style-section .color-trigger .chev{width:14px;height:14px}
+    .style-section .color-popover{
+      position:fixed;left:10px;right:auto;top:auto;bottom:62px;width:min(272px,calc(100vw - 20px));z-index:90;
+    }
+    .lbl-long{display:none}
+    .lbl-short{display:inline}
+    .style-section .field{margin:0;flex:0 0 102px;min-width:102px}
+    .style-section .field label{font-size:11px;margin-bottom:0;white-space:nowrap}
+    .style-section .field input[type="range"]{min-height:18px;height:18px;margin:0}
+    .style-section #fillOpacityField{flex-basis:92px;min-width:92px}
+    .style-section .check{
+      flex:none;white-space:nowrap;font-size:12px;font-weight:600;gap:6px;
+      padding:4px 9px;min-height:32px;border:1px solid var(--line);border-radius:999px;background:var(--surface-2);
+    }
+    .style-section .check input{width:16px;height:16px}
+    .layers-toggle{
+      display:inline-flex;align-items:center;gap:6px;flex:none;white-space:nowrap;
+      min-height:38px;height:38px;padding:5px 11px;border-radius:999px;font-size:12.5px;
+    }
+    .layers-toggle .count{
+      background:var(--accent);color:#fff;border-radius:999px;min-width:20px;height:20px;
+      display:inline-flex;align-items:center;justify-content:center;font-size:11px;padding:0 5px;
+    }
+    /* Layer & tanda terpilih: jendela melayang di atas kanvas, bukan blok di bawahnya */
+    #layersSection{display:none}
+    .panel.show-layers #layersSection{
+      display:block;position:fixed;left:8px;right:8px;bottom:62px;z-index:80;
+      background:var(--surface);border:1px solid var(--line);border-radius:16px;
+      box-shadow:var(--shadow);padding:12px;max-height:48dvh;overflow-y:auto;
+    }
+    #layersSection .layers{max-height:34dvh;overflow-y:auto}
+    .layer{min-height:38px}
+    /* Tanda terpilih: BUKAN kartu besar lagi. Satu bilah pil tipis satu baris
+       melayang di tepi bawah kanvas — tanpa judul, tanpa teks penjelasan. */
+    #selSection{
+      position:fixed;left:50%;right:auto;transform:translateX(-50%);bottom:62px;z-index:75;
+      width:max-content;max-width:calc(100vw - 12px);
+      background:var(--surface);border:1px solid var(--line);border-radius:999px;
+      box-shadow:var(--shadow);padding:5px;
+    }
+    #selSection .sel-info{display:none}
+    #selSection .sel-actions{flex-wrap:nowrap;gap:4px}
+    #selSection .sel-actions .btn{
+      flex:none;min-height:34px;height:34px;padding:4px 9px;font-size:12.5px;border-radius:999px;
+    }
+    #selSection .sel-actions .sel-close{flex:0 0 34px;width:34px;padding:0}
+    .btn .btn-text{display:none}
+    .btn.keep-text .btn-text{display:inline}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ======= Top bar ======= -->
+  <header class="topbar">
+    <div class="tb-group">
+      <button class="btn icon" id="btnZoomOut" title="Perkecil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <span class="zoom-label" id="zoomLabel">100%</span>
+      <button class="btn icon" id="btnZoomIn" title="Perbesar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+      </button>
+      <button class="btn" id="btnFit" title="Pas Layar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+        <span class="btn-text">Pas Layar</span>
+      </button>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group">
+      <label class="btn primary keep-text" id="btnUpload" for="fileInput" tabindex="0" role="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span class="btn-text" id="uploadLabel">Unggah Foto</span>
+      </label>
+      <button class="btn icon" id="btnUndo" title="Urungkan (Ctrl+Z)" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg>
+      </button>
+      <button class="btn icon" id="btnRedo" title="Ulangi (Ctrl+Shift+Z)" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 15-6.7L21 13"/></svg>
+      </button>
+    </div>
+    <div class="spacer"></div>
+    <div class="tb-group">
+      <button class="btn keep-text" id="btnInstall" type="button" hidden title="Pasang sebagai aplikasi">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span class="btn-text">Pasang App</span>
+      </button>
+      <button class="btn" id="btnClear" title="Hapus Semua Tanda" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        <span class="btn-text">Hapus Semua Tanda</span>
+      </button>
+      <button class="btn primary keep-text" id="btnExport" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span class="btn-text">Unduh PNG</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="workspace">
+
+    <!-- ======= Tools rail ======= -->
+    <nav class="rail" id="rail" aria-label="Alat gambar">
+      <button class="tool active" data-tool="select" title="Pilih & geser (V)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3l7.5 18 2.2-7.3L21 11.5z"/></svg>
+        <span class="tip">Pilih &amp; geser (V)</span>
+      </button>
+      <button class="tool" data-tool="pan" title="Geser kanvas (H)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6.5a1.5 1.5 0 0 0-3 0V11m0-5.5v-2a1.5 1.5 0 0 0-3 0V11m0-7.5a1.5 1.5 0 0 0-3 0V12m6-1a1.5 1.5 0 0 1 3 0v3c0 3.9-3.1 7-7 7s-5.9-1.6-7.6-4.6L2.6 13c-.5-1 .8-2 1.7-1.4L6 13V6.5a1.5 1.5 0 0 1 3 0"/></svg>
+        <span class="tip">Geser kanvas (H)</span>
+      </button>
+      <div class="rail-sep"></div>
+      <button class="tool" data-tool="dot" title="Titik penanda (D)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="9"/></svg>
+        <span class="tip">Titik penanda (D)</span>
+      </button>
+      <button class="tool" data-tool="circle" title="Lingkaran dari titik tengah (C)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg>
+        <span class="tip">Lingkaran (C) — tarik dari titik tengah</span>
+      </button>
+      <button class="tool" data-tool="ellipse" title="Elips (E)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="10" ry="6.5"/></svg>
+        <span class="tip">Elips (E)</span>
+      </button>
+      <button class="tool" data-tool="rect" title="Kotak (R)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3.5" y="5.5" width="17" height="13" rx="1.5"/></svg>
+        <span class="tip">Kotak (R)</span>
+      </button>
+      <button class="tool" data-tool="line" title="Garis (L)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="19" x2="19" y2="5"/><circle cx="5" cy="19" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="5" r="1.6" fill="currentColor" stroke="none"/></svg>
+        <span class="tip">Garis (L)</span>
+      </button>
+      <button class="tool" data-tool="arrow" title="Panah (A)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="19" y2="5"/><polyline points="10 5 19 5 19 14"/></svg>
+        <span class="tip">Panah (A)</span>
+      </button>
+      <button class="tool" data-tool="pen" title="Gambar bebas (P)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>
+        <span class="tip">Gambar bebas (P)</span>
+      </button>
+      <button class="tool" data-tool="text" title="Teks (T)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        <span class="tip">Teks (T)</span>
+      </button>
+    </nav>
+
+    <!-- ======= Stage ======= -->
+    <div class="stage-wrap" id="stageWrap">
+      <canvas id="stage"></canvas>
+      <div class="empty-state" id="emptyState">
+        <div class="empty-card" id="emptyCard">
+          <h1>Mulai dengan mengunggah foto</h1>
+          <p>Tarik &amp; letakkan foto ke sini, atau klik tombol di bawah. Sesudah foto masuk, kamu bisa menambah titik, lingkaran, garis, panah, dan teks — semua tanda boleh ditarik keluar dari batas foto.</p>
+          <div class="empty-actions">
+            <label class="btn primary" id="btnUpload2" for="fileInput" tabindex="0" role="button">Pilih Foto</label>
+            <button class="btn" id="btnBlank">Kanvas Kosong</button>
+          </div>
+        </div>
+      </div>
+      <input type="text" class="text-editor" id="textEditor" placeholder="Tulis teks lalu Enter" autocomplete="off" />
+      <div class="hint" id="hint">
+        <span class="hint-text" id="hintText"><strong>Pilih alat</strong> di sebelah kiri, lalu gambar langsung di atas foto.</span>
+        <button class="hint-close" id="hintClose" type="button" aria-label="Sembunyikan petunjuk" title="Sembunyikan petunjuk">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+        </button>
+      </div>
+      <button class="hint-reopen" id="hintReopen" type="button" hidden aria-label="Tampilkan petunjuk" title="Tampilkan petunjuk">?</button>
+    </div>
+
+    <!-- ======= Side panel ======= -->
+    <aside class="panel" id="panel">
+      <section class="style-section">
+        <h2>Warna &amp; Gaya</h2>
+        <div class="color-menu" id="colorMenu">
+          <button class="color-trigger" id="colorTrigger" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="colorPopover">
+            <span class="color-dot" id="colorDot" style="background:#e53935"></span>
+            <span class="color-trigger-meta">
+              <strong id="colorName">Merah</strong>
+              <span id="colorHex">#e53935</span>
+            </span>
+            <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="color-popover" id="colorPopover" hidden>
+            <p>Pilih warna</p>
+            <div class="swatches" id="swatches"></div>
+            <div class="color-row">
+              <input type="color" id="colorCustom" value="#e53935" />
+              <span>Warna lain…</span>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label><span class="lbl-long">Ketebalan garis</span><span class="lbl-short">Tebal</span> <output id="widthOut">5 px</output></label>
+          <input type="range" id="widthRange" min="1" max="24" value="5" step="1" aria-label="Ketebalan garis" />
+        </div>
+        <div class="field">
+          <label><span class="lbl-long">Ukuran teks</span><span class="lbl-short">Teks</span> <output id="fontOut">36 px</output></label>
+          <input type="range" id="fontRange" min="14" max="120" value="36" step="2" aria-label="Ukuran teks" />
+        </div>
+        <label class="check"><input type="checkbox" id="fillCheck" /> <span class="lbl-long">Isi bentuk (lingkaran / elips / kotak)</span><span class="lbl-short">Isi</span></label>
+        <div class="field" id="fillOpacityField" style="display:none">
+          <label><span class="lbl-long">Kekuatan isi</span><span class="lbl-short">Isi</span> <output id="fillOpacityOut">25%</output></label>
+          <input type="range" id="fillOpacityRange" min="5" max="90" value="25" step="5" aria-label="Kekuatan isi" />
+        </div>
+        <label class="check"><input type="checkbox" id="dashCheck" /> <span class="lbl-long">Garis putus-putus</span><span class="lbl-short">Putus-putus</span></label>
+        <label class="check"><input type="checkbox" id="snapCheck" checked /> <span class="lbl-long">Kenali bentuk dari coretan (lingkaran, kotak, garis)</span><span class="lbl-short">Kenali bentuk</span></label>
+        <button class="btn layers-toggle" id="btnLayersToggle" type="button" aria-expanded="false">Layer <span class="count" id="layersCount">0</span></button>
+      </section>
+
+      <section id="selSection" style="display:none">
+        <p class="sel-info" id="selInfo"></p>
+        <div class="sel-actions">
+          <button class="btn" id="btnDup" title="Duplikat tanda ini">Duplikat</button>
+          <button class="btn" id="btnForward" title="Bawa ke depan">Depan</button>
+          <button class="btn" id="btnBack" title="Kirim ke belakang">Belakang</button>
+          <button class="btn sel-del" id="btnDelete" title="Hapus tanda ini">Hapus</button>
+          <button class="btn sel-close" id="btnDeselect" title="Batal pilih" aria-label="Batal pilih">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+          </button>
+        </div>
+      </section>
+
+      <section id="layersSection">
+        <h2>Layer Tanda</h2>
+        <div class="layers" id="layers"></div>
+        <p class="layers-empty" id="layersEmpty">Belum ada tanda. Semua tanda yang kamu gambar muncul di sini sebagai layer — urutannya bisa digeser, disembunyikan, atau dihapus satu per satu.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<div class="save-sheet" id="saveSheet" hidden>
+  <div class="save-card">
+    <h2>PNG siap disimpan</h2>
+    <p>Unduhannya sudah dimulai. Kalau berkasnya belum muncul di Galeri HP, simpan lewat salah satu cara di bawah ini.</p>
+    <img id="saveImg" alt="Pratinjau PNG hasil ekspor" />
+    <div class="save-actions">
+      <button class="btn primary" id="btnShareSave" type="button">Simpan / Bagikan…</button>
+      <button class="btn" id="btnDownloadAgain" type="button">Unduh Lagi</button>
+      <button class="btn" id="btnCloseSave" type="button">Tutup</button>
+    </div>
+    <p class="save-tip">Cara lain: tekan lama gambar di atas, lalu pilih <strong>Unduh gambar</strong> atau <strong>Simpan ke Galeri</strong>.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="fileInput" class="file-input" accept="image/*,.jpg,.jpeg,.png,.gif,.webp,.bmp,.heic,.heif" />
+
+<script>
+(function(){
+"use strict";
+
+/* ================= State ================= */
+var canvas = document.getElementById('stage');
+var ctx = canvas.getContext('2d');
+var wrap = document.getElementById('stageWrap');
+
+var img = null;          // HTMLImageElement
+var imgW = 0, imgH = 0;  // world size of photo
+var hasCanvasArea = false;
+
+var shapes = [];         // annotation layers (world coords; may live outside photo)
+var selectedId = null;
+var counters = {};
+
+var tool = 'select';
+var style = {
+  color: '#e53935',
+  width: 5,
+  fontSize: 36,
+  fill: false,
+  fillOpacity: 0.25,
+  dashed: false,
+  snap: true
+};
+
+var view = { scale: 1, ox: 0, oy: 0 }; // screen = world*scale + offset
+
+var undoStack = [], redoStack = [];
+
+/* ---- Sesi terakhir: foto + tanda tersimpan di perangkat (IndexedDB) ----
+   Supaya pekerjaan tidak hilang saat halaman ditutup / dimuat ulang.
+   restored=false selama pemulihan awal berjalan, agar keadaan kosong
+   sesaat tidak menimpa simpanan yang belum sempat dibaca. */
+var photoBlob = null;      // berkas foto asli terakhir (Blob), null bila kanvas kosong
+var isBlankCanvas = false; // true bila sesi terakhir adalah Kanvas Kosong
+var restored = false;
+var saveTimer = null;
+var DB_NAME = 'tandai-foto', DB_STORE = 'sesi', DB_KEY = 'terakhir';
+
+var TYPE_NAMES = {
+  dot:'Titik', circle:'Lingkaran', ellipse:'Elips', rect:'Kotak',
+  line:'Garis', arrow:'Panah', pen:'Coretan', text:'Teks'
+};
+var HINTS = {
+  select:'<strong>Pilih &amp; geser:</strong> klik tanda untuk memilih, tarik untuk memindah. Tarik bulatan kecil di ujung tanda untuk mengubah ukurannya. Klik ganda teks untuk mengedit.',
+  pan:'<strong>Geser kanvas:</strong> tarik untuk menggeser tampilan. Roda mouse / cubit untuk memperbesar.',
+  dot:'<strong>Titik:</strong> klik di mana saja untuk menaruh titik penanda — di dalam maupun di luar foto.',
+  circle:'<strong>Lingkaran:</strong> klik-tahan di titik tengah, lalu tarik keluar sejauh radius yang kamu mau. Lepaskan untuk selesai.',
+  ellipse:'<strong>Elips:</strong> klik-tahan lalu tarik membentuk kotak batas elips.',
+  rect:'<strong>Kotak:</strong> klik-tahan lalu tarik membentuk kotak.',
+  line:'<strong>Garis:</strong> klik-tahan di titik awal, tarik ke titik akhir, lalu lepaskan.',
+  arrow:'<strong>Panah:</strong> klik-tahan di titik awal, tarik ke arah tujuan — ujung panah ada di titik akhir.',
+  pen:'<strong>Gambar bebas:</strong> tahan dan gerakkan untuk mencoret. Coretan yang mirip lingkaran, elips, kotak, atau garis lurus otomatis dirapikan jadi bentuk sempurna begitu dilepas.',
+  text:'<strong>Teks:</strong> klik di posisi yang kamu mau, tulis, lalu tekan Enter.'
+};
+
+/* ================= Helpers ================= */
+function $(id){ return document.getElementById(id); }
+function uid(){ return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function hexToRgba(hex, a){
+  var h = hex.replace('#','');
+  if(h.length===3) h = h.split('').map(function(c){return c+c;}).join('');
+  var n = parseInt(h,16);
+  return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+}
+var toastTimer = null;
+function toast(msg){
+  var t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2600);
+}
+
+/* ---- Persistence (IndexedDB) ---- */
+function idbOpen(cb){
+  if(!window.indexedDB){ cb(null); return; }
+  var req;
+  try{ req = indexedDB.open(DB_NAME, 1); }catch(e){ cb(null); return; }
+  req.onupgradeneeded = function(){
+    if(!req.result.objectStoreNames.contains(DB_STORE)) req.result.createObjectStore(DB_STORE);
+  };
+  req.onsuccess = function(){ cb(req.result); };
+  req.onerror = function(){ cb(null); };
+}
+function scheduleSave(){
+  if(!restored) return;
+  if(saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNow, 450);
+}
+function saveNow(){
+  if(!restored) return;
+  saveTimer = null;
+  var state = {
+    shapes: shapes, counters: counters,
+    style: { color: style.color, width: style.width, fontSize: style.fontSize,
+             fill: style.fill, fillOpacity: style.fillOpacity, dashed: style.dashed,
+             snap: style.snap },
+    imgW: imgW, imgH: imgH, hasCanvasArea: hasCanvasArea,
+    isBlank: isBlankCanvas, photoBlob: photoBlob, savedAt: Date.now()
+  };
+  idbOpen(function(db){
+    if(!db) return;
+    try{
+      var tx = db.transaction(DB_STORE, 'readwrite');
+      tx.objectStore(DB_STORE).put(state, DB_KEY);
+      tx.oncomplete = function(){ db.close(); };
+      tx.onerror = function(){ db.close(); };
+    }catch(e){ try{ db.close(); }catch(err){} }
+  });
+}
+function flushSave(){
+  if(saveTimer){ clearTimeout(saveTimer); saveNow(); }
+}
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'hidden') flushSave();
+});
+window.addEventListener('pagehide', flushSave);
+
+function restoreLast(){
+  idbOpen(function(db){
+    if(!db){ restored = true; return; }
+    var got;
+    try{ got = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(DB_KEY); }
+    catch(e){ restored = true; try{ db.close(); }catch(err){} return; }
+    got.onerror = function(){ restored = true; try{ db.close(); }catch(e){} };
+    got.onsuccess = function(){
+      var st = got.result;
+      try{ db.close(); }catch(e){}
+      if(!st || !st.hasCanvasArea || (!st.imgW && !st.imgH)){ restored = true; return; }
+      shapes = Array.isArray(st.shapes) ? st.shapes : [];
+      counters = st.counters || {};
+      if(st.style){
+        style.color = st.style.color || style.color;
+        style.width = st.style.width || style.width;
+        style.fontSize = st.style.fontSize || style.fontSize;
+        style.fill = !!st.style.fill;
+        style.fillOpacity = st.style.fillOpacity || style.fillOpacity;
+        style.dashed = !!st.style.dashed;
+        style.snap = st.style.snap !== false;
+      }
+      imgW = st.imgW; imgH = st.imgH;
+      hasCanvasArea = true;
+      isBlankCanvas = !!st.isBlank;
+      photoBlob = st.photoBlob || null;
+      selectedId = null;
+      document.getElementById('emptyState').style.display = 'none';
+      if(photoBlob) document.getElementById('uploadLabel').textContent = 'Ganti Foto';
+      // Buka gerbang simpan SEBELUM gambar dimuat: fitView/draw sesudah ini
+      // boleh menjadwalkan simpan (isinya sama dengan yang baru dipulihkan).
+      restored = true;
+      syncStyleUI(); renderLayers(); renderSelPanel(); syncHistoryButtons();
+      if(photoBlob){
+        var url = URL.createObjectURL(photoBlob);
+        var im = new Image();
+        im.onload = function(){
+          URL.revokeObjectURL(url);
+          img = im; imgW = im.naturalWidth; imgH = im.naturalHeight;
+          fitView(); syncHistoryButtons();
+          toast('Foto & tanda terakhir dipulihkan.');
+        };
+        im.onerror = function(){
+          // Berkas tersimpan tak terbaca: tanda tetap dipulihkan di atas
+          // bidang sebesar foto aslinya, bukan dibuang semuanya.
+          URL.revokeObjectURL(url);
+          img = null; fitView();
+          toast('Tanda terakhir dipulihkan.');
+        };
+        im.src = url;
+      } else {
+        img = null;
+        fitView();
+        toast('Foto & tanda terakhir dipulihkan.');
+      }
+    };
+  });
+}
+
+function pushHistory(){
+  undoStack.push(JSON.stringify(shapes));
+  if(undoStack.length > 80) undoStack.shift();
+  redoStack = [];
+  syncHistoryButtons();
+}
+function syncHistoryButtons(){
+  $('btnUndo').disabled = undoStack.length === 0;
+  $('btnRedo').disabled = redoStack.length === 0;
+  $('btnClear').disabled = shapes.length === 0;
+  $('btnExport').disabled = !hasCanvasArea;
+}
+function restore(json){
+  shapes = JSON.parse(json);
+  if(selectedId && !shapes.some(function(s){return s.id===selectedId;})) selectedId = null;
+  draw(); renderLayers(); renderSelPanel();
+}
+
+/* ================= View / coords ================= */
+function toWorld(sx, sy){ return { x:(sx - view.ox)/view.scale, y:(sy - view.oy)/view.scale }; }
+function toScreen(wx, wy){ return { x: wx*view.scale + view.ox, y: wy*view.scale + view.oy }; }
+
+function fitView(){
+  if(!hasCanvasArea) return;
+  var r = wrap.getBoundingClientRect();
+  var pad = 48;
+  var targetW = imgW, targetH = imgH;
+  if(shapes.length){
+    var b = allBounds();
+    targetW = Math.max(imgW, b.maxX) - Math.min(0, b.minX);
+    targetH = Math.max(imgH, b.maxY) - Math.min(0, b.minY);
+  }
+  var s = Math.min((r.width - pad*2)/targetW, (r.height - pad*2)/targetH);
+  s = Math.max(0.02, Math.min(s, 4));
+  view.scale = s;
+  var cx = (Math.min(0, shapes.length?allBounds().minX:0) + Math.max(imgW, shapes.length?allBounds().maxX:imgW))/2;
+  var cy = (Math.min(0, shapes.length?allBounds().minY:0) + Math.max(imgH, shapes.length?allBounds().maxY:imgH))/2;
+  view.ox = r.width/2 - cx*s;
+  view.oy = r.height/2 - cy*s;
+  draw(); syncZoom();
+}
+function zoomAt(cx, cy, factor, deferDraw){
+  var before = toWorld(cx, cy);
+  view.scale = Math.max(0.02, Math.min(8, view.scale * factor));
+  var after = toScreen(before.x, before.y);
+  view.ox += cx - after.x; view.oy += cy - after.y;
+  if(!deferDraw) draw();
+  syncZoom();
+}
+function syncZoom(){ $('zoomLabel').textContent = Math.round(view.scale*100) + '%'; }
+
+/* ================= Bounds ================= */
+function shapeBounds(s){
+  switch(s.type){
+    case 'dot': return {minX:s.x-s.r-4, minY:s.y-s.r-4, maxX:s.x+s.r+4, maxY:s.y+s.r+4};
+    case 'circle': return {minX:s.cx-s.r, minY:s.cy-s.r, maxX:s.cx+s.r, maxY:s.cy+s.r};
+    case 'ellipse': return {minX:s.cx-s.rx, minY:s.cy-s.ry, maxX:s.cx+s.rx, maxY:s.cy+s.ry};
+    case 'rect': return {minX:Math.min(s.x,s.x+s.w), minY:Math.min(s.y,s.y+s.h), maxX:Math.max(s.x,s.x+s.w), maxY:Math.max(s.y,s.y+s.h)};
+    case 'line': case 'arrow':
+      return {minX:Math.min(s.x1,s.x2)-6, minY:Math.min(s.y1,s.y2)-6, maxX:Math.max(s.x1,s.x2)+6, maxY:Math.max(s.y1,s.y2)+6};
+    case 'pen': {
+      var xs = s.points.map(function(p){return p.x;}), ys = s.points.map(function(p){return p.y;});
+      return {minX:Math.min.apply(null,xs)-4, minY:Math.min.apply(null,ys)-4, maxX:Math.max.apply(null,xs)+4, maxY:Math.max.apply(null,ys)+4};
+    }
+    case 'text': {
+      ctx.font = '700 ' + s.fontSize + 'px Outfit, sans-serif';
+      var w = ctx.measureText(s.text).width;
+      return {minX:s.x, minY:s.y - s.fontSize, maxX:s.x + w, maxY:s.y + s.fontSize*0.25};
+    }
+  }
+  return {minX:0,minY:0,maxX:0,maxY:0};
+}
+function allBounds(){
+  var b = {minX:Infinity, minY:Infinity, maxX:-Infinity, maxY:-Infinity};
+  shapes.forEach(function(s){
+    if(s.hidden) return;
+    var sb = shapeBounds(s);
+    b.minX = Math.min(b.minX, sb.minX); b.minY = Math.min(b.minY, sb.minY);
+    b.maxX = Math.max(b.maxX, sb.maxX); b.maxY = Math.max(b.maxY, sb.maxY);
+  });
+  return b;
+}
+
+/* ================= Drawing ================= */
+function resizeCanvas(){
+  var r = wrap.getBoundingClientRect();
+  var dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+  canvas._dpr = dpr;
+  draw();
+}
+
+function drawShape(c, s){
+  if(s.hidden) return;
+  c.save();
+  c.strokeStyle = s.color;
+  c.fillStyle = s.color;
+  c.lineWidth = s.width;
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  c.setLineDash(s.dashed ? [s.width*2.4, s.width*1.8] : []);
+  switch(s.type){
+    case 'dot':
+      c.setLineDash([]);
+      c.beginPath(); c.arc(s.x, s.y, s.r, 0, Math.PI*2);
+      c.fill();
+      c.lineWidth = Math.max(2, s.width*0.7); c.strokeStyle = '#ffffff';
+      c.stroke();
+      break;
+    case 'circle':
+      c.beginPath(); c.arc(s.cx, s.cy, Math.max(0.1,s.r), 0, Math.PI*2);
+      if(s.fill){ c.fillStyle = hexToRgba(s.color, s.fillOpacity); c.fill(); }
+      c.stroke();
+      // Garis silang diameter tipis: horizontal + vertikal, bertemu tepat di titik tengah.
+      // Bagian dari objek lingkaran — ikut digeser, diubah ukuran, dan terekspor.
+      c.save();
+      c.setLineDash([]);
+      c.lineWidth = Math.max(0.8, s.width * 0.32);
+      c.globalAlpha = 0.75;
+      c.beginPath();
+      c.moveTo(s.cx - s.r, s.cy); c.lineTo(s.cx + s.r, s.cy);
+      c.moveTo(s.cx, s.cy - s.r); c.lineTo(s.cx, s.cy + s.r);
+      c.stroke();
+      c.restore();
+      break;
+    case 'ellipse':
+      c.beginPath(); c.ellipse(s.cx, s.cy, Math.max(0.1,s.rx), Math.max(0.1,s.ry), 0, 0, Math.PI*2);
+      if(s.fill){ c.fillStyle = hexToRgba(s.color, s.fillOpacity); c.fill(); }
+      c.stroke();
+      break;
+    case 'rect':
+      c.beginPath(); c.rect(s.x, s.y, s.w, s.h);
+      if(s.fill){ c.fillStyle = hexToRgba(s.color, s.fillOpacity); c.fill(); }
+      c.stroke();
+      break;
+    case 'line':
+      c.beginPath(); c.moveTo(s.x1, s.y1); c.lineTo(s.x2, s.y2); c.stroke();
+      break;
+    case 'arrow': {
+      c.beginPath(); c.moveTo(s.x1, s.y1); c.lineTo(s.x2, s.y2); c.stroke();
+      var ang = Math.atan2(s.y2 - s.y1, s.x2 - s.x1);
+      var hl = Math.max(14, s.width * 3.4);
+      c.setLineDash([]);
+      c.beginPath();
+      c.moveTo(s.x2, s.y2);
+      c.lineTo(s.x2 - hl*Math.cos(ang - 0.42), s.y2 - hl*Math.sin(ang - 0.42));
+      c.lineTo(s.x2 - hl*Math.cos(ang + 0.42), s.y2 - hl*Math.sin(ang + 0.42));
+      c.closePath(); c.fill();
+      break;
+    }
+    case 'pen': {
+      // Jalur dihaluskan dengan kurva kuadratik lewat titik tengah antar titik,
+      // supaya coretan mengalir mengikuti jari, bukan patah-patah antar titik.
+      var pts = s.points;
+      if(pts.length === 1){
+        c.setLineDash([]);
+        c.beginPath(); c.arc(pts[0].x, pts[0].y, Math.max(0.6, s.width/2), 0, Math.PI*2); c.fill();
+      } else if(pts.length === 2){
+        c.beginPath(); c.moveTo(pts[0].x, pts[0].y); c.lineTo(pts[1].x, pts[1].y); c.stroke();
+      } else if(pts.length > 2){
+        c.beginPath();
+        c.moveTo(pts[0].x, pts[0].y);
+        c.lineTo((pts[0].x + pts[1].x)/2, (pts[0].y + pts[1].y)/2);
+        for(var pi=1; pi<pts.length-1; pi++){
+          c.quadraticCurveTo(pts[pi].x, pts[pi].y, (pts[pi].x + pts[pi+1].x)/2, (pts[pi].y + pts[pi+1].y)/2);
+        }
+        c.lineTo(pts[pts.length-1].x, pts[pts.length-1].y);
+        c.stroke();
+      }
+      break;
+    }
+    case 'text':
+      c.setLineDash([]);
+      c.font = '700 ' + s.fontSize + 'px Outfit, sans-serif';
+      c.textBaseline = 'alphabetic';
+      c.lineWidth = Math.max(2, s.fontSize/9);
+      c.strokeStyle = 'rgba(255,255,255,0.85)';
+      c.strokeText(s.text, s.x, s.y);
+      c.fillText(s.text, s.x, s.y);
+      break;
+  }
+  c.restore();
+}
+
+function getHandles(s){
+  var h = [];
+  if(!s) return h;
+  switch(s.type){
+    case 'circle': h.push({role:'r', x:s.cx + s.r, y:s.cy}); break;
+    case 'ellipse':
+      h.push({role:'rx', x:s.cx + s.rx, y:s.cy});
+      h.push({role:'ry', x:s.cx, y:s.cy + s.ry});
+      break;
+    case 'rect':
+      h.push({role:'se', x:s.x + s.w, y:s.y + s.h});
+      break;
+    case 'line': case 'arrow':
+      h.push({role:'p1', x:s.x1, y:s.y1});
+      h.push({role:'p2', x:s.x2, y:s.y2});
+      break;
+  }
+  return h;
+}
+
+function draw(){
+  var dpr = canvas._dpr || 1;
+  var W = canvas.width / dpr, H = canvas.height / dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  if(!hasCanvasArea) return;
+
+  ctx.save();
+  ctx.translate(view.ox, view.oy);
+  ctx.scale(view.scale, view.scale);
+
+  // Bayangan foto: shadowBlur dihitung ulang di setiap frame adalah
+  // penyebab utama geser/zoom tersendat di HP. Selama gestur berjalan pakai
+  // bayangan murah berbentuk persegi; sesudah gestur selesai gambar penuh
+  // dengan bayangan lembut seperti biasa.
+  ctx.save();
+  if(gesturing){
+    ctx.fillStyle = 'rgba(20,18,30,0.20)';
+    ctx.fillRect(8 / view.scale, 10 / view.scale, imgW, imgH);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, imgW, imgH);
+  } else {
+    ctx.shadowColor = 'rgba(20,18,30,0.35)';
+    ctx.shadowBlur = 30 / view.scale;
+    ctx.shadowOffsetY = 10 / view.scale;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, imgW, imgH);
+  }
+  ctx.restore();
+
+  if(img) ctx.drawImage(img, 0, 0, imgW, imgH);
+
+  // photo outline
+  ctx.lineWidth = 1.5 / view.scale;
+  ctx.strokeStyle = 'rgba(43,41,56,0.45)';
+  ctx.strokeRect(0, 0, imgW, imgH);
+
+  // all annotation layers — NOT clipped to the photo
+  shapes.forEach(function(s){ drawShape(ctx, s); });
+  if(draft) drawShape(ctx, draft);
+
+  ctx.restore();
+
+  // selection overlay (screen space for crisp handles)
+  var sel = shapes.find(function(s){ return s.id === selectedId; });
+  if(sel && !sel.hidden){
+    var b = shapeBounds(sel);
+    var tl = toScreen(b.minX, b.minY), br = toScreen(b.maxX, b.maxY);
+    ctx.save();
+    ctx.strokeStyle = '#6F66A3';
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([6,4]);
+    ctx.strokeRect(tl.x - 6, tl.y - 6, (br.x-tl.x) + 12, (br.y-tl.y) + 12);
+    ctx.setLineDash([]);
+    getHandles(sel).forEach(function(hd){
+      var p = toScreen(hd.x, hd.y);
+      ctx.beginPath(); ctx.arc(p.x, p.y, 7, 0, Math.PI*2);
+      ctx.fillStyle = '#ffffff'; ctx.fill();
+      ctx.lineWidth = 2.4; ctx.strokeStyle = '#6F66A3'; ctx.stroke();
+    });
+    ctx.restore();
+  }
+  syncHistoryButtons();
+  scheduleSave();
+}
+
+/* ================= Layers panel ================= */
+function shapeLabel(s){
+  return s.name || TYPE_NAMES[s.type];
+}
+function renderLayers(){
+  var box = $('layers');
+  box.innerHTML = '';
+  var lc = $('layersCount'); if(lc) lc.textContent = shapes.length;
+  $('layersEmpty').style.display = shapes.length ? 'none' : 'block';
+  var list = shapes.slice().reverse(); // top-most first
+  list.forEach(function(s){
+    var el = document.createElement('div');
+    el.className = 'layer' + (s.id===selectedId ? ' active' : '') + (s.hidden ? ' hidden-shape' : '');
+    el.innerHTML =
+      '<span class="lcolor" style="background:' + s.color + '"></span>' +
+      '<span class="lname">' + shapeLabel(s).replace(/</g,'&lt;') + '</span>' +
+      '<button data-act="up" title="Naikkan layer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>' +
+      '<button data-act="down" title="Turunkan layer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>' +
+      '<button data-act="vis" title="Tampilkan / sembunyikan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (s.hidden
+        ? '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'
+        : '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>') + '</svg></button>' +
+      '<button data-act="del" title="Hapus layer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>';
+    el.addEventListener('click', function(ev){
+      var btn = ev.target.closest('button');
+      var act = btn ? btn.getAttribute('data-act') : null;
+      var idx = shapes.indexOf(s);
+      if(act === 'del'){
+        pushHistory(); shapes.splice(idx,1);
+        if(selectedId===s.id) selectedId = null;
+      } else if(act === 'vis'){
+        s.hidden = !s.hidden;
+      } else if(act === 'up'){
+        if(idx < shapes.length-1){ pushHistory(); shapes.splice(idx,1); shapes.splice(idx+1,0,s); }
+      } else if(act === 'down'){
+        if(idx > 0){ pushHistory(); shapes.splice(idx,1); shapes.splice(idx-1,0,s); }
+      } else {
+        selectedId = s.id; syncStyleFromShape(s);
+      }
+      if(act==='up'||act==='down'){ /* history already pushed */ }
+      draw(); renderLayers(); renderSelPanel();
+    });
+    box.appendChild(el);
+  });
+}
+
+function renderSelPanel(){
+  var sel = shapes.find(function(s){ return s.id === selectedId; });
+  $('selSection').style.display = sel ? 'block' : 'none';
+  if(sel) $('selInfo').textContent = shapeLabel(sel);
+}
+
+function syncStyleFromShape(s){
+  style.color = s.color; style.width = s.width;
+  style.dashed = !!s.dashed; style.fill = !!s.fill;
+  if(s.fillOpacity) style.fillOpacity = s.fillOpacity;
+  if(s.fontSize) style.fontSize = s.fontSize;
+  syncStyleUI();
+}
+function applyStyleToSelected(){
+  var sel = shapes.find(function(s){ return s.id === selectedId; });
+  if(!sel) return;
+  sel.color = style.color; sel.width = style.width; sel.dashed = style.dashed;
+  sel.fill = style.fill; sel.fillOpacity = style.fillOpacity;
+  if(sel.type === 'text') sel.fontSize = style.fontSize;
+  if(sel.type === 'dot') sel.r = Math.max(4, style.width * 1.7);
+  draw(); renderLayers();
+}
+
+/* ================= Style UI ================= */
+var SWATCHES = ['#e53935','#f57c00','#fbc02d','#43a047','#1e88e5','#6F66A3','#000000','#ffffff'];
+var COLOR_NAMES = {
+  '#e53935':'Merah', '#f57c00':'Jingga', '#fbc02d':'Kuning', '#43a047':'Hijau',
+  '#1e88e5':'Biru', '#6f66a3':'Ungu', '#000000':'Hitam', '#ffffff':'Putih'
+};
+var swBox = $('swatches');
+function closeColorMenu(){
+  $('colorPopover').hidden = true;
+  $('colorTrigger').setAttribute('aria-expanded','false');
+}
+function toggleColorMenu(force){
+  var pop = $('colorPopover');
+  var open = typeof force === 'boolean' ? force : pop.hidden;
+  pop.hidden = !open;
+  $('colorTrigger').setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+$('colorTrigger').addEventListener('click', function(e){
+  e.stopPropagation(); toggleColorMenu();
+});
+document.addEventListener('click', function(e){
+  if(!$('colorPopover').hidden && !$('colorMenu').contains(e.target)) closeColorMenu();
+});
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') closeColorMenu();
+});
+SWATCHES.forEach(function(c){
+  var b = document.createElement('button');
+  b.className = 'swatch' + (c===style.color ? ' active' : '');
+  b.style.background = c; b.title = (COLOR_NAMES[c.toLowerCase()] || c) + ' ' + c; b.setAttribute('data-color', c);
+  b.setAttribute('aria-label', 'Warna ' + (COLOR_NAMES[c.toLowerCase()] || c));
+  b.addEventListener('click', function(){
+    style.color = c; $('colorCustom').value = c;
+    syncStyleUI(); applyStyleToSelected(); closeColorMenu();
+  });
+  swBox.appendChild(b);
+});
+function syncStyleUI(){
+  Array.prototype.forEach.call(swBox.children, function(b){
+    b.classList.toggle('active', b.getAttribute('data-color') === style.color);
+  });
+  $('colorCustom').value = style.color;
+  $('colorDot').style.background = style.color;
+  $('colorHex').textContent = style.color;
+  $('colorName').textContent = COLOR_NAMES[style.color.toLowerCase()] || 'Warna pilihan';
+  $('widthRange').value = style.width;
+  $('widthOut').textContent = style.width + ' px';
+  $('fontRange').value = style.fontSize;
+  $('fontOut').textContent = style.fontSize + ' px';
+  $('fillCheck').checked = style.fill;
+  $('dashCheck').checked = style.dashed;
+  $('snapCheck').checked = style.snap;
+  $('fillOpacityRange').value = Math.round(style.fillOpacity*100);
+  $('fillOpacityOut').textContent = Math.round(style.fillOpacity*100) + '%';
+  $('fillOpacityField').style.display = style.fill ? 'block' : 'none';
+  scheduleSave();
+}
+$('colorCustom').addEventListener('input', function(e){ style.color = e.target.value; syncStyleUI(); applyStyleToSelected(); });
+$('colorCustom').addEventListener('change', function(){ closeColorMenu(); });
+$('widthRange').addEventListener('input', function(e){ style.width = +e.target.value; syncStyleUI(); applyStyleToSelected(); });
+$('fontRange').addEventListener('input', function(e){ style.fontSize = +e.target.value; syncStyleUI(); applyStyleToSelected(); });
+$('fillCheck').addEventListener('change', function(e){ style.fill = e.target.checked; syncStyleUI(); applyStyleToSelected(); });
+$('dashCheck').addEventListener('change', function(e){ style.dashed = e.target.checked; syncStyleUI(); applyStyleToSelected(); });
+$('snapCheck').addEventListener('change', function(e){ style.snap = e.target.checked; syncStyleUI(); });
+$('fillOpacityRange').addEventListener('input', function(e){ style.fillOpacity = +e.target.value/100; syncStyleUI(); applyStyleToSelected(); });
+syncStyleUI();
+
+/* ================= Tools ================= */
+function setTool(t){
+  tool = t;
+  Array.prototype.forEach.call(document.querySelectorAll('.tool'), function(b){
+    b.classList.toggle('active', b.getAttribute('data-tool') === t);
+  });
+  canvas.className = t==='pan' ? 'tool-pan' : (t==='text' ? 'tool-text' : (t==='select' ? '' : 'tool-draw'));
+  $('hintText').innerHTML = HINTS[t] || '';
+  cancelTextEdit();
+}
+Array.prototype.forEach.call(document.querySelectorAll('.tool'), function(b){
+  b.addEventListener('click', function(){ setTool(b.getAttribute('data-tool')); });
+});
+$('btnLayersToggle').addEventListener('click', function(){
+  var p = $('panel');
+  var open = p.classList.toggle('show-layers');
+  $('btnLayersToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+});
+document.addEventListener('click', function(e){
+  var p = $('panel');
+  if(p.classList.contains('show-layers') && !p.contains(e.target) && e.target !== $('btnLayersToggle')){
+    /* ketukan di kanvas menutup jendela layer */
+    if(e.target === canvas){ p.classList.remove('show-layers'); $('btnLayersToggle').setAttribute('aria-expanded','false'); }
+  }
+});
+$('hintClose').addEventListener('click', function(){
+  $('hint').hidden = true;
+  $('hintReopen').hidden = false;
+});
+$('hintReopen').addEventListener('click', function(){
+  $('hint').hidden = false;
+  $('hintReopen').hidden = true;
+});
+
+/* ================= Menu strips: swipe vs tap =================
+   Menggeser bilah menu (atas / alat / gaya) tidak boleh berakhir sebagai
+   klik pada tombol di bawah jari saat jari diangkat: geseran yang jauh
+   menelan satu klik berikutnya di bilah itu. Ketukan sungguhan (hampir
+   tidak bergerak) tidak terpengaruh. */
+function guardStripScroll(el){
+  if(!el) return;
+  var sx = 0, sy = 0, moved = false;
+  el.addEventListener('pointerdown', function(e){ sx = e.clientX; sy = e.clientY; moved = false; }, { passive:true });
+  el.addEventListener('pointermove', function(e){
+    if(Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) moved = true;
+  }, { passive:true });
+  el.addEventListener('click', function(e){
+    if(moved){ e.preventDefault(); e.stopPropagation(); moved = false; }
+  }, true);
+}
+guardStripScroll(document.querySelector('.topbar'));
+guardStripScroll($('rail'));
+guardStripScroll(document.querySelector('.style-section'));
+
+/* ================= Shape creation ================= */
+function baseStyle(){
+  return { color: style.color, width: style.width, dashed: style.dashed, fill: style.fill, fillOpacity: style.fillOpacity };
+}
+function nameFor(type){
+  counters[type] = (counters[type] || 0) + 1;
+  return TYPE_NAMES[type] + ' ' + counters[type];
+}
+function addShape(s){
+  s.id = uid();
+  s.name = nameFor(s.type);
+  shapes.push(s);
+  selectedId = null;
+  draw(); renderLayers(); renderSelPanel();
+}
+
+/* ================= Hit testing ================= */
+function distToSeg(px, py, x1, y1, x2, y2){
+  var dx = x2-x1, dy = y2-y1;
+  var l2 = dx*dx + dy*dy;
+  var t = l2 ? Math.max(0, Math.min(1, ((px-x1)*dx + (py-y1)*dy)/l2)) : 0;
+  var cx = x1 + t*dx, cy = y1 + t*dy;
+  return Math.hypot(px-cx, py-cy);
+}
+function hitShape(s, p){
+  // Toleransi sentuh: minimal ±18 px di layar (cukup untuk ujung jari di HP),
+  // dikonversi ke satuan dunia lewat skala tampilan saat ini.
+  var tol = Math.max(18/view.scale, (s.width || 5) + 6);
+  switch(s.type){
+    case 'dot': return Math.hypot(p.x-s.x, p.y-s.y) <= s.r + tol*0.7;
+    case 'circle': {
+      // Seluruh cakram ikut terpilih, bukan cuma garis lingkarnya: ketukan di
+      // titik tengah (pas garis silangnya) atau di mana pun di dalam lingkaran
+      // harus memilih lingkaran ini, terisi atau tidak.
+      return Math.hypot(p.x-s.cx, p.y-s.cy) <= s.r + tol;
+    }
+    case 'ellipse': {
+      // Sama: bagian dalam elips ikut terpilih, plus toleransi di luar tepinya.
+      var vIn = Math.pow((p.x-s.cx)/Math.max(1,s.rx),2) + Math.pow((p.y-s.cy)/Math.max(1,s.ry),2);
+      if(vIn <= 1) return true;
+      var vOut = Math.pow((p.x-s.cx)/Math.max(1,s.rx+tol),2) + Math.pow((p.y-s.cy)/Math.max(1,s.ry+tol),2);
+      return vOut <= 1;
+    }
+    case 'rect': {
+      // Seluruh isi kotak ikut terpilih, bukan cuma keempat sisinya.
+      return p.x >= Math.min(s.x,s.x+s.w)-tol && p.x <= Math.max(s.x,s.x+s.w)+tol &&
+             p.y >= Math.min(s.y,s.y+s.h)-tol && p.y <= Math.max(s.y,s.y+s.h)+tol;
+    }
+    case 'line': case 'arrow':
+      return distToSeg(p.x, p.y, s.x1, s.y1, s.x2, s.y2) <= tol ||
+             Math.hypot(p.x-s.x1, p.y-s.y1) <= tol || Math.hypot(p.x-s.x2, p.y-s.y2) <= tol;
+    case 'pen': {
+      for(var i=1;i<s.points.length;i++)
+        if(distToSeg(p.x,p.y,s.points[i-1].x,s.points[i-1].y,s.points[i].x,s.points[i].y) <= tol) return true;
+      return s.points.length === 1 && Math.hypot(p.x-s.points[0].x, p.y-s.points[0].y) <= tol;
+    }
+    case 'text': {
+      var b = shapeBounds(s);
+      return p.x>=b.minX-tol && p.x<=b.maxX+tol && p.y>=b.minY-tol && p.y<=b.maxY+tol;
+    }
+  }
+  return false;
+}
+function pickAt(p){
+  for(var i = shapes.length-1; i >= 0; i--){
+    if(!shapes[i].hidden && hitShape(shapes[i], p)) return shapes[i];
+  }
+  return null;
+}
+function moveShape(s, dx, dy){
+  switch(s.type){
+    case 'dot': case 'text': s.x+=dx; s.y+=dy; break;
+    case 'circle': case 'ellipse': s.cx+=dx; s.cy+=dy; break;
+    case 'rect': s.x+=dx; s.y+=dy; break;
+    case 'line': case 'arrow': s.x1+=dx; s.y1+=dy; s.x2+=dx; s.y2+=dy; break;
+    case 'pen': s.points.forEach(function(pt){ pt.x+=dx; pt.y+=dy; }); break;
+  }
+}
+
+/* ================= Kenali bentuk dari coretan =================
+   Seperti "bentuk sempurna" di markup galeri iOS: coretan pensil yang
+   cukup mirip lingkaran / elips / kotak / garis lurus diganti bentuk
+   sempurnanya saat jari dilepas. Yang tidak dikenali tetap coretan,
+   hanya titik-titiknya disederhanakan supaya tidak berkelok-kelok. */
+function rdpSimplify(pts, eps){
+  if(pts.length < 3) return pts;
+  var keep = [];
+  for(var k=0;k<pts.length;k++) keep.push(false);
+  keep[0] = keep[pts.length-1] = true;
+  var stack = [[0, pts.length-1]];
+  while(stack.length){
+    var seg = stack.pop(), a = seg[0], b = seg[1];
+    var maxD = 0, idx = -1;
+    for(var i=a+1;i<b;i++){
+      var dd = distToSeg(pts[i].x, pts[i].y, pts[a].x, pts[a].y, pts[b].x, pts[b].y);
+      if(dd > maxD){ maxD = dd; idx = i; }
+    }
+    if(idx > 0 && maxD > eps){ keep[idx] = true; stack.push([a, idx]); stack.push([idx, b]); }
+  }
+  var out = pts.filter(function(p, i){ return keep[i]; });
+  return out.length >= 2 ? out : pts;
+}
+function recognizeStroke(pts){
+  var n = pts.length;
+  if(n < 8) return null;
+  var minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+  pts.forEach(function(p){
+    minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
+  });
+  var bw = maxX - minX, bh = maxY - minY;
+  var diag = Math.hypot(bw, bh);
+  if(diag < 12) return null;
+  var first = pts[0], last = pts[n-1];
+  var gap = Math.hypot(first.x - last.x, first.y - last.y);
+  var closed = gap <= Math.max(10, diag * 0.22);
+  if(closed){
+    // Lingkaran: jarak tiap titik ke titik tengah menyebar sempit.
+    var cx = 0, cy = 0;
+    pts.forEach(function(p){ cx += p.x; cy += p.y; });
+    cx /= n; cy /= n;
+    var rs = pts.map(function(p){ return Math.hypot(p.x - cx, p.y - cy); });
+    var R = rs.reduce(function(a, b){ return a + b; }, 0) / n;
+    if(R >= 6){
+      var varSum = rs.reduce(function(a, r){ return a + (r - R) * (r - R); }, 0);
+      var sd = Math.sqrt(varSum / n);
+      var aspect = bw / Math.max(1, bh);
+      if(sd / R < 0.20 && aspect > 0.72 && aspect < 1.38){
+        return { type:'circle', cx:cx, cy:cy, r:R };
+      }
+    }
+    // Kotak: sebagian besar titik menempel ke salah satu sisi kotak batas.
+    if(bw >= 10 && bh >= 10){
+      var tolE = 0.16 * Math.min(bw, bh), near = 0;
+      pts.forEach(function(p){
+        var dEdge = Math.min(p.x - minX, maxX - p.x, p.y - minY, maxY - p.y);
+        if(dEdge <= tolE) near++;
+      });
+      if(near / n >= 0.82){
+        return { type:'rect', x:minX, y:minY, w:bw, h:bh };
+      }
+    }
+    // Elips: titik-titik menempel ke elips yang memenuhi kotak batas.
+    var rx = bw / 2, ry = bh / 2;
+    if(rx >= 6 && ry >= 6){
+      var ecx = (minX + maxX) / 2, ecy = (minY + maxY) / 2;
+      var err = 0, bad = 0;
+      pts.forEach(function(p){
+        var v = Math.sqrt(Math.pow((p.x - ecx) / rx, 2) + Math.pow((p.y - ecy) / ry, 2));
+        err += Math.abs(v - 1);
+        if(Math.abs(v - 1) > 0.35) bad++;
+      });
+      if(err / n < 0.13 && bad / n < 0.15){
+        return { type:'ellipse', cx:ecx, cy:ecy, rx:rx, ry:ry };
+      }
+    }
+    return null;
+  }
+  // Terbuka: garis lurus bila semua titik dekat ke ruas awal–akhir.
+  var L = Math.hypot(last.x - first.x, last.y - first.y);
+  if(L >= 12){
+    var maxDev = 0;
+    pts.forEach(function(p){
+      var d = distToSeg(p.x, p.y, first.x, first.y, last.x, last.y);
+      if(d > maxDev) maxDev = d;
+    });
+    if(maxDev <= Math.max(3, L * 0.06)){
+      return { type:'line', x1:first.x, y1:first.y, x2:last.x, y2:last.y };
+    }
+  }
+  return null;
+}
+
+/* ================= Pointer interaction ================= */
+var draft = null;
+var drag = null; // {mode:'move'|'handle'|'pan'|'draw', ...}
+var pointers = new Map();
+var pinch = null;
+var gesturing = false;
+var spaceDown = false;
+
+function canvasPos(e){
+  var r = canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function latestPoint(e){
+  var evs = (typeof e.getCoalescedEvents === 'function') ? e.getCoalescedEvents() : null;
+  return canvasPos((evs && evs.length) ? evs[evs.length-1] : e);
+}
+function beginPinch(){
+  var pts = Array.from(pointers.values());
+  var r = canvas.getBoundingClientRect();
+  pinch = { d: Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y),
+            cx: (pts[0].x+pts[1].x)/2 - r.left, cy: (pts[0].y+pts[1].y)/2 - r.top };
+}
+
+/* ---- Gambar bebas: segmen baru digambar langsung di atas kanvas ----
+   Selama coretan berjalan tampilan tidak berubah, jadi cukup menggambar
+   potongan garis barunya saja. Menggambar ulang seluruh kanvas (foto besar
+   + bayangan) di setiap gerakan jari membuat coretan berat dan tertinggal. */
+function inkSetup(){
+  var dpr = canvas._dpr || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.translate(view.ox, view.oy);
+  ctx.scale(view.scale, view.scale);
+  ctx.strokeStyle = draft.color;
+  ctx.fillStyle = draft.color;
+  ctx.lineWidth = draft.width;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.setLineDash([]);
+}
+function inkDot(){
+  if(!draft || !draft._ink) return;
+  inkSetup();
+  ctx.beginPath();
+  ctx.arc(draft._ink.lx, draft._ink.ly, Math.max(0.6, draft.width/2), 0, Math.PI*2);
+  ctx.fill();
+}
+function inkAdvance(){
+  if(!draft || !draft._ink) return;
+  var pts = draft.points, ink = draft._ink;
+  if(ink.n >= pts.length) return;
+  inkSetup();
+  ctx.beginPath();
+  ctx.moveTo(ink.mx, ink.my);
+  while(ink.n < pts.length){
+    var p = pts[ink.n];
+    var mx = (ink.lx + p.x)/2, my = (ink.ly + p.y)/2;
+    ctx.quadraticCurveTo(ink.lx, ink.ly, mx, my);
+    ink.mx = mx; ink.my = my; ink.lx = p.x; ink.ly = p.y; ink.n++;
+  }
+  ctx.stroke();
+}
+var drawQueued = false;
+function queueDraw(){
+  if(drawQueued) return;
+  drawQueued = true;
+  requestAnimationFrame(function(){ drawQueued = false; draw(); });
+}
+
+canvas.addEventListener('pointerdown', function(e){
+  if(e.pointerType === 'mouse') e.preventDefault();
+  try{ canvas.setPointerCapture(e.pointerId); }catch(err){}
+  pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  gesturing = true;
+  if(pointers.size === 2){
+    // Coretan pensil yang sedang berjalan TIDAK dibatalkan jari lain yang tak
+    // sengaja menyentuh layar (telapak / jari penyangga): abaikan jari
+    // tambahan itu sampai coretan selesai.
+    if(draft && draft.type === 'pen') return;
+    // Gestur satu jari yang sedang berjalan diselesaikan dengan rapi dulu
+    // (bentuk setengah jadi dibuang, perpindahan elemen disimpan riwayatnya),
+    // baru masuk mode cubit — bukan dibuang diam-diam seperti sebelumnya.
+    if(drag){
+      if(drag.mode === 'draw'){ draft = null; }
+      else if((drag.mode === 'move' && drag.moved) || drag.mode === 'handle'){
+        undoStack.push(drag.snapshot); if(undoStack.length>80) undoStack.shift(); redoStack = [];
+        syncHistoryButtons();
+      }
+      drag = null;
+    }
+    beginPinch();
+    draw();
+    return;
+  }
+  if(pointers.size > 2) return;
+  if(!hasCanvasArea) return;
+  var sp = canvasPos(e);
+  var w = toWorld(sp.x, sp.y);
+  var activeTool = (spaceDown || e.button === 1) ? 'pan' : tool;
+
+  if(activeTool === 'pan' || e.button === 1){
+    drag = { mode:'pan', sx: sp.x, sy: sp.y, ox: view.ox, oy: view.oy, pointerId: e.pointerId };
+    return;
+  }
+  if(activeTool === 'select'){
+    var sel = shapes.find(function(s){ return s.id === selectedId; });
+    if(sel){
+      var handles = getHandles(sel);
+      for(var i=0;i<handles.length;i++){
+        var hp = toScreen(handles[i].x, handles[i].y);
+        if(Math.hypot(sp.x-hp.x, sp.y-hp.y) <= 22){
+          drag = { mode:'handle', shape: sel, role: handles[i].role, snapshot: JSON.stringify(shapes), pointerId: e.pointerId };
+          return;
+        }
+      }
+    }
+    var hit = pickAt(w);
+    if(hit){
+      selectedId = hit.id; syncStyleFromShape(hit);
+      drag = { mode:'move', shape: hit, lastX: w.x, lastY: w.y, snapshot: JSON.stringify(shapes), moved:false, pointerId: e.pointerId };
+    } else {
+      selectedId = null;
+      drag = { mode:'pan', sx: sp.x, sy: sp.y, ox: view.ox, oy: view.oy, pointerId: e.pointerId };
+    }
+    draw(); renderLayers(); renderSelPanel();
+    return;
+  }
+  if(activeTool === 'dot'){
+    pushHistory();
+    var d = baseStyle();
+    addShape(Object.assign({ type:'dot', x:w.x, y:w.y, r: Math.max(5, style.width*1.7) }, d));
+    return;
+  }
+  if(activeTool === 'text'){
+    openTextEditor(sp, w, null);
+    return;
+  }
+  // drawing tools
+  var st = baseStyle();
+  if(activeTool === 'circle') draft = Object.assign({ type:'circle', cx:w.x, cy:w.y, r:0 }, st);
+  else if(activeTool === 'ellipse') draft = Object.assign({ type:'ellipse', cx:w.x, cy:w.y, rx:0, ry:0, _x0:w.x, _y0:w.y }, st);
+  else if(activeTool === 'rect') draft = Object.assign({ type:'rect', x:w.x, y:w.y, w:0, h:0 }, st);
+  else if(activeTool === 'line') draft = Object.assign({ type:'line', x1:w.x, y1:w.y, x2:w.x, y2:w.y }, st);
+  else if(activeTool === 'arrow') draft = Object.assign({ type:'arrow', x1:w.x, y1:w.y, x2:w.x, y2:w.y }, st);
+  else if(activeTool === 'pen') draft = Object.assign({ type:'pen', points:[{x:w.x, y:w.y}] }, st);
+  if(draft){
+    drag = { mode:'draw', pointerId: e.pointerId };
+    if(draft.type === 'pen'){
+      draft._ink = { n:1, mx:w.x, my:w.y, lx:w.x, ly:w.y };
+      inkDot();
+    }
+  }
+});
+
+canvas.addEventListener('pointermove', function(e){
+  if(pointers.has(e.pointerId)) pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(pinch && pointers.size === 2){
+    var pts = Array.from(pointers.values());
+    var dNow = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+    var rNow = canvas.getBoundingClientRect();
+    var cxNow = (pts[0].x+pts[1].x)/2 - rNow.left, cyNow = (pts[0].y+pts[1].y)/2 - rNow.top;
+    if(pinch.d > 0 && dNow > 0) zoomAt(cxNow, cyNow, dNow/pinch.d, true);
+    view.ox += cxNow - pinch.cx; view.oy += cyNow - pinch.cy;
+    pinch = { d:dNow, cx:cxNow, cy:cyNow };
+    queueDraw();
+    return;
+  }
+  if(!drag) return;
+  // Gerakan jari lain tidak boleh menggeser gestur yang sedang berjalan.
+  if(drag.pointerId !== undefined && e.pointerId !== drag.pointerId) return;
+  // Pakai titik terakhir dari peristiwa gabungan (coalesced) supaya posisi
+  // mengikuti ujung jari yang paling baru, bukan posisi yang sudah basi.
+  var sp = latestPoint(e);
+  var w = toWorld(sp.x, sp.y);
+
+  if(drag.mode === 'pan'){
+    view.ox = drag.ox + (sp.x - drag.sx);
+    view.oy = drag.oy + (sp.y - drag.sy);
+    queueDraw(); return;
+  }
+  if(drag.mode === 'move'){
+    var dx = w.x - drag.lastX, dy = w.y - drag.lastY;
+    if(dx || dy){ moveShape(drag.shape, dx, dy); drag.moved = true; }
+    drag.lastX = w.x; drag.lastY = w.y;
+    queueDraw(); return;
+  }
+  if(drag.mode === 'handle'){
+    var s = drag.shape;
+    if(drag.role === 'r') s.r = Math.max(2, Math.hypot(w.x - s.cx, w.y - s.cy));
+    else if(drag.role === 'rx') s.rx = Math.max(2, Math.abs(w.x - s.cx));
+    else if(drag.role === 'ry') s.ry = Math.max(2, Math.abs(w.y - s.cy));
+    else if(drag.role === 'se'){ s.w = w.x - s.x; s.h = w.y - s.y; }
+    else if(drag.role === 'p1'){ s.x1 = w.x; s.y1 = w.y; }
+    else if(drag.role === 'p2'){ s.x2 = w.x; s.y2 = w.y; }
+    queueDraw(); return;
+  }
+  if(drag.mode === 'draw' && draft){
+    if(draft.type === 'circle') draft.r = Math.hypot(w.x - draft.cx, w.y - draft.cy);
+    else if(draft.type === 'ellipse'){
+      draft.cx = (draft._x0 + w.x)/2; draft.cy = (draft._y0 + w.y)/2;
+      draft.rx = Math.abs(w.x - draft._x0)/2; draft.ry = Math.abs(w.y - draft._y0)/2;
+    }
+    else if(draft.type === 'rect'){ draft.w = w.x - draft.x; draft.h = w.y - draft.y; }
+    else if(draft.type === 'line' || draft.type === 'arrow'){ draft.x2 = w.x; draft.y2 = w.y; }
+    else if(draft.type === 'pen'){
+      // Ambil semua titik antara yang dilaporkan browser (coalesced events)
+      // supaya garis mengikuti jari rapat-rapat walau digerakkan cepat, lalu
+      // gambar segmen barunya langsung — tanpa menggambar ulang seluruh
+      // kanvas di setiap gerakan, yang membuat coretan tertinggal jauh.
+      var evs = (typeof e.getCoalescedEvents === 'function') ? e.getCoalescedEvents() : null;
+      if(!evs || !evs.length) evs = [e];
+      for(var ci=0; ci<evs.length; ci++){
+        var cp = canvasPos(evs[ci]);
+        var cw = toWorld(cp.x, cp.y);
+        var last = draft.points[draft.points.length-1];
+        if(Math.hypot(cw.x-last.x, cw.y-last.y) > 1.2/view.scale) draft.points.push({x:cw.x, y:cw.y});
+      }
+      if(draft.dashed) queueDraw(); else inkAdvance();
+      return;
+    }
+    queueDraw(); return;
+  }
+});
+
+function endPointer(e){
+  var wasTracked = pointers.has(e.pointerId);
+  pointers.delete(e.pointerId);
+  if(pinch && wasTracked && pointers.size < 2){
+    pinch = null;
+    // Satu jari tersisa sesudah cubit: jari itu langsung lanjut jadi gestur
+    // geser dari posisinya sekarang, tanpa lompatan dan tanpa harus diangkat
+    // dulu — sebelumnya jari sisa ini mati total sampai disentuh ulang.
+    if(pointers.size === 1 && hasCanvasArea){
+      var rem = Array.from(pointers.entries())[0];
+      var rr = canvas.getBoundingClientRect();
+      drag = { mode:'pan', sx: rem[1].x - rr.left, sy: rem[1].y - rr.top, ox: view.ox, oy: view.oy, pointerId: rem[0] };
+    }
+  }
+  if(pointers.size === 0) gesturing = false;
+  if(!drag){ if(pointers.size === 0) draw(); return; }
+  // Hanya jari yang memulai gestur ini yang boleh mengakhirinya. Lepasnya
+  // jari lain di tengah jalan tidak memutus coretan yang sedang digambar.
+  if(drag.pointerId !== undefined && e.pointerId !== drag.pointerId) return;
+  if(drag.mode === 'draw' && draft){
+    var d = draft; draft = null;
+    delete d._x0; delete d._y0; delete d._ink;
+    var ok = true;
+    if(d.type === 'circle' && d.r < 3) ok = false;
+    if(d.type === 'ellipse' && (d.rx < 3 || d.ry < 3)) ok = false;
+    if(d.type === 'rect' && (Math.abs(d.w) < 3 || Math.abs(d.h) < 3)) ok = false;
+    if((d.type === 'line' || d.type === 'arrow') && Math.hypot(d.x2-d.x1, d.y2-d.y1) < 4) ok = false;
+    if(d.type === 'pen' && d.points.length < 2) ok = false;
+    if(ok && d.type === 'pen' && style.snap){
+      var rec = recognizeStroke(d.points);
+      if(rec){
+        var nd = Object.assign({}, d, rec);
+        delete nd.points;
+        pushHistory(); addShape(nd);
+        toast('Coretan dikenali sebagai ' + TYPE_NAMES[nd.type].toLowerCase() + '.');
+        d = null;
+      } else {
+        // Tidak dikenali: tetap coretan, tapi titiknya disederhanakan
+        // supaya goresan kecil yang berkelok-kelok hilang.
+        var pb = shapeBounds(d);
+        d.points = rdpSimplify(d.points, Math.max(1, Math.hypot(pb.maxX - pb.minX, pb.maxY - pb.minY) * 0.012));
+      }
+    }
+    if(ok && d){ pushHistory(); addShape(d); }
+  }
+  if(drag.mode === 'move' && drag.moved){
+    undoStack.push(drag.snapshot); if(undoStack.length>80) undoStack.shift(); redoStack = [];
+  }
+  if(drag.mode === 'handle'){
+    undoStack.push(drag.snapshot); if(undoStack.length>80) undoStack.shift(); redoStack = [];
+    renderLayers();
+  }
+  drag = null;
+  syncHistoryButtons();
+  draw();
+}
+
+/* pointercancel BUKAN pointerup: interupsi sistem (notifikasi, gestur
+   navigasi, layar terkunci) membatalkan gestur — coretan/bentuk setengah
+   jadi dibuang dan elemen yang sedang digeser dikembalikan ke posisi
+   semula, bukan disahkan diam-diam seperti sebelumnya. */
+function cancelPointer(e){
+  pointers.delete(e.pointerId);
+  if(pointers.size < 2) pinch = null;
+  if(drag && (drag.pointerId === undefined || drag.pointerId === e.pointerId)){
+    if(drag.mode === 'draw'){ draft = null; }
+    else if((drag.mode === 'move' || drag.mode === 'handle') && drag.snapshot){
+      shapes = JSON.parse(drag.snapshot);
+      if(selectedId && !shapes.some(function(s){ return s.id===selectedId; })) selectedId = null;
+    }
+    drag = null;
+  }
+  if(pointers.size === 0) gesturing = false;
+  draw(); renderLayers(); renderSelPanel();
+}
+canvas.addEventListener('pointerup', endPointer);
+canvas.addEventListener('pointercancel', cancelPointer);
+canvas.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+
+canvas.addEventListener('dblclick', function(e){
+  var sp = canvasPos(e);
+  var w = toWorld(sp.x, sp.y);
+  var hit = pickAt(w);
+  if(hit && hit.type === 'text') openTextEditor(toScreen(hit.x, hit.y - hit.fontSize), w, hit);
+});
+
+canvas.addEventListener('wheel', function(e){
+  if(!hasCanvasArea) return;
+  e.preventDefault();
+  var sp = canvasPos(e);
+  zoomAt(sp.x, sp.y, e.deltaY < 0 ? 1.12 : 1/1.12);
+}, { passive:false });
+
+/* ================= Text editor ================= */
+var editingText = null; // {shape|null, world:{x,y}}
+function openTextEditor(screenPos, worldPos, shape){
+  var ed = $('textEditor');
+  editingText = { shape: shape, world: { x: shape ? shape.x : worldPos.x, y: shape ? shape.y : worldPos.y } };
+  ed.value = shape ? shape.text : '';
+  ed.style.display = 'block';
+  ed.style.left = Math.max(4, screenPos.x) + 'px';
+  ed.style.top = Math.max(4, screenPos.y - 6) + 'px';
+  ed.style.fontSize = Math.max(14, (shape ? shape.fontSize : style.fontSize) * view.scale) + 'px';
+  ed.style.color = shape ? shape.color : style.color;
+  setTimeout(function(){ ed.focus(); ed.select(); }, 10);
+}
+function commitTextEdit(){
+  var ed = $('textEditor');
+  if(ed.style.display === 'none' || !editingText) return;
+  var val = ed.value.trim();
+  if(editingText.shape){
+    if(val){ pushHistory(); editingText.shape.text = val; }
+  } else if(val){
+    pushHistory();
+    var st = baseStyle();
+    addShape(Object.assign({ type:'text', x: editingText.world.x, y: editingText.world.y + style.fontSize, text: val, fontSize: style.fontSize }, st));
+  }
+  ed.style.display = 'none'; editingText = null;
+  draw(); renderLayers(); renderSelPanel();
+}
+function cancelTextEdit(){
+  var ed = $('textEditor');
+  if(editingText && !editingText.shape){ ed.style.display = 'none'; editingText = null; }
+  else if(editingText){ commitTextEdit(); }
+}
+$('textEditor').addEventListener('keydown', function(e){
+  if(e.key === 'Enter'){ e.preventDefault(); commitTextEdit(); }
+  if(e.key === 'Escape'){ $('textEditor').style.display='none'; editingText=null; }
+  e.stopPropagation();
+});
+$('textEditor').addEventListener('blur', function(){ setTimeout(commitTextEdit, 120); });
+
+/* ================= Upload ================= */
+function loadFile(file, retried){
+  if(!file) return;
+  // Sebagian pemilih berkas Android mengembalikan tipe MIME kosong atau generik
+  // untuk foto yang sah — terima juga berdasarkan ekstensi namanya.
+  var nameOk = /\.(jpe?g|png|gif|webp|bmp|svg|heic|heif|avif)$/i.test(file.name || '');
+  var typeOk = !file.type || /^image\//.test(file.type) || file.type === 'application/octet-stream';
+  if(!typeOk && !nameOk){ toast('Berkas itu bukan gambar.'); return; }
+  toast('Memuat foto…');
+  var url = URL.createObjectURL(file);
+  var im = new Image();
+  im.onload = function(){
+    URL.revokeObjectURL(url);
+    img = im; imgW = im.naturalWidth; imgH = im.naturalHeight;
+    photoBlob = file; isBlankCanvas = false;
+    hasCanvasArea = true;
+    $('emptyState').style.display = 'none';
+    $('uploadLabel').textContent = 'Ganti Foto';
+    fitView(); syncHistoryButtons();
+    toast('Foto masuk. Pilih alat di kiri untuk mulai menandai.');
+  };
+  im.onerror = function(){
+    URL.revokeObjectURL(url);
+    // Cadangan: sebagian format gagal dibaca <img> tetapi bisa didekode createImageBitmap.
+    if(!retried && window.createImageBitmap){
+      createImageBitmap(file).then(function(bmp){
+        var c = document.createElement('canvas');
+        c.width = bmp.width; c.height = bmp.height;
+        c.getContext('2d').drawImage(bmp, 0, 0);
+        if(bmp.close) bmp.close();
+        c.toBlob(function(blob){
+          if(blob) loadFile(blob, true);
+          else toast('Foto gagal dibaca. Coba berkas lain.');
+        }, 'image/png');
+      }).catch(function(){ toast('Foto gagal dibaca. Coba berkas lain (JPG/PNG paling aman).'); });
+    } else {
+      toast('Foto gagal dibaca. Coba berkas lain (JPG/PNG paling aman).');
+    }
+  };
+  im.src = url;
+}
+// Tombol unggah adalah <label for="fileInput">: ketukan pengguna mengaktifkan
+// input berkas secara bawaan browser, tanpa klik buatan JavaScript yang di
+// sebagian WebView/iframe dibuang diam-diam sehingga pemilih foto tak terbuka.
+// Label tidak bisa difokuskan bawaan, jadi beri jalan keyboard secara eksplisit.
+['btnUpload','btnUpload2'].forEach(function(id){
+  $(id).addEventListener('keydown', function(e){
+    if(e.key === 'Enter' || e.key === ' '){
+      e.preventDefault();
+      $('fileInput').click();
+    }
+  });
+});
+$('fileInput').addEventListener('change', function(e){
+  if(e.target.files[0]) loadFile(e.target.files[0]);
+  e.target.value = '';
+});
+$('btnBlank').addEventListener('click', function(){
+  img = null; imgW = 1200; imgH = 800;
+  photoBlob = null; isBlankCanvas = true;
+  hasCanvasArea = true;
+  $('emptyState').style.display = 'none';
+  fitView(); syncHistoryButtons();
+});
+['dragover','dragenter'].forEach(function(ev){
+  document.addEventListener(ev, function(e){ e.preventDefault(); $('emptyCard').classList.add('dragging'); });
+});
+['dragleave','drop'].forEach(function(ev){
+  document.addEventListener(ev, function(e){ e.preventDefault(); $('emptyCard').classList.remove('dragging'); });
+});
+document.addEventListener('drop', function(e){
+  var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if(f) loadFile(f);
+});
+document.addEventListener('paste', function(e){
+  var items = e.clipboardData && e.clipboardData.items;
+  if(!items) return;
+  for(var i=0;i<items.length;i++){
+    if(/^image\//.test(items[i].type)){ loadFile(items[i].getAsFile()); break; }
+  }
+});
+
+/* ================= Top bar actions ================= */
+$('btnUndo').addEventListener('click', function(){
+  if(!undoStack.length) return;
+  redoStack.push(JSON.stringify(shapes));
+  restore(undoStack.pop()); syncHistoryButtons();
+});
+$('btnRedo').addEventListener('click', function(){
+  if(!redoStack.length) return;
+  undoStack.push(JSON.stringify(shapes));
+  restore(redoStack.pop()); syncHistoryButtons();
+});
+$('btnZoomIn').addEventListener('click', function(){
+  var r = wrap.getBoundingClientRect(); zoomAt(r.width/2, r.height/2, 1.25);
+});
+$('btnZoomOut').addEventListener('click', function(){
+  var r = wrap.getBoundingClientRect(); zoomAt(r.width/2, r.height/2, 1/1.25);
+});
+$('btnFit').addEventListener('click', fitView);
+$('btnClear').addEventListener('click', function(){
+  if(!shapes.length) return;
+  pushHistory(); shapes = []; selectedId = null;
+  draw(); renderLayers(); renderSelPanel();
+  toast('Semua tanda dihapus. Bisa diurungkan dengan tombol Urungkan.');
+});
+
+/* Selected-shape actions */
+function selectedShape(){ return shapes.find(function(s){ return s.id === selectedId; }); }
+$('btnDeselect').addEventListener('click', function(){
+  selectedId = null;
+  draw(); renderLayers(); renderSelPanel();
+});
+$('btnDelete').addEventListener('click', function(){
+  var s = selectedShape(); if(!s) return;
+  pushHistory();
+  shapes.splice(shapes.indexOf(s), 1); selectedId = null;
+  draw(); renderLayers(); renderSelPanel();
+});
+$('btnDup').addEventListener('click', function(){
+  var s = selectedShape(); if(!s) return;
+  pushHistory();
+  var c = clone(s); c.id = uid(); c.name = nameFor(c.type);
+  moveShape(c, 24, 24);
+  shapes.push(c); selectedId = c.id;
+  draw(); renderLayers(); renderSelPanel();
+});
+$('btnForward').addEventListener('click', function(){
+  var s = selectedShape(); if(!s) return;
+  var i = shapes.indexOf(s);
+  if(i < shapes.length-1){ pushHistory(); shapes.splice(i,1); shapes.splice(i+1,0,s); draw(); renderLayers(); }
+});
+$('btnBack').addEventListener('click', function(){
+  var s = selectedShape(); if(!s) return;
+  var i = shapes.indexOf(s);
+  if(i > 0){ pushHistory(); shapes.splice(i,1); shapes.splice(i-1,0,s); draw(); renderLayers(); }
+});
+
+/* ================= Export ================= */
+$('btnExport').addEventListener('click', function(){
+  if(!hasCanvasArea) return;
+  // Hasil simpan SELALU persis seukuran foto yang diunggah. Tanda yang
+  // keluar dari batas foto terpotong di tepi kanvas ekspor — tidak ikut
+  // memperluas gambar seperti sebelumnya.
+  var w = Math.max(1, Math.round(imgW)), h = Math.max(1, Math.round(imgH));
+  var out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  var c = out.getContext('2d');
+  c.fillStyle = '#ffffff';
+  c.fillRect(0, 0, w, h);
+  if(img) c.drawImage(img, 0, 0, imgW, imgH);
+  c.save();
+  c.beginPath(); c.rect(0, 0, w, h); c.clip();
+  shapes.forEach(function(s){ drawShape(c, s); });
+  c.restore();
+  // Simpan lewat blob, bukan data URL raksasa: klik unduhan data URL yang
+  // besar sering dibuang diam-diam oleh WebView Android, jadi berkasnya
+  // tidak pernah sampai ke penyimpanan dan tidak muncul di Galeri.
+  if(out.toBlob){
+    out.toBlob(function(blob){
+      if(blob) deliverPng(blob, null);
+      else deliverPng(null, out.toDataURL('image/png'));
+    }, 'image/png');
+  } else {
+    deliverPng(null, out.toDataURL('image/png'));
+  }
+});
+
+var lastExport = null; // { url, file } — hasil ekspor terakhir, untuk panel simpan
+function triggerDownload(url){
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'foto-bertanda.png';
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+function deliverPng(blob, dataUrl){
+  var url = dataUrl, file = null;
+  if(blob){
+    if(lastExport) URL.revokeObjectURL(lastExport.url);
+    url = URL.createObjectURL(blob);
+    try{ file = new File([blob], 'foto-bertanda.png', { type:'image/png' }); }catch(err){ file = null; }
+    lastExport = { url: url, file: file };
+  }
+  triggerDownload(url);
+  var coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  if(coarse && blob){
+    // Di HP unduhan bisa mendarat di folder yang tidak dipindai Galeri, jadi
+    // tawarkan jalur simpan yang pasti: bagikan sebagai berkas (bisa dipilih
+    // "Simpan ke Galeri/Files") atau tekan lama pratinjaunya.
+    openSaveSheet();
+  } else {
+    toast('PNG terunduh — ukurannya sama persis dengan foto aslinya.');
+  }
+}
+function openSaveSheet(){
+  if(!lastExport) return;
+  $('saveImg').src = lastExport.url;
+  var canShare = !!(lastExport.file && navigator.canShare && navigator.canShare({ files: [lastExport.file] }));
+  $('btnShareSave').hidden = !canShare;
+  $('saveSheet').hidden = false;
+}
+$('btnShareSave').addEventListener('click', function(){
+  if(lastExport && lastExport.file && navigator.share){
+    navigator.share({ files: [lastExport.file], title: 'Foto bertanda' }).catch(function(){});
+  }
+});
+$('btnDownloadAgain').addEventListener('click', function(){
+  if(lastExport) triggerDownload(lastExport.url);
+});
+$('btnCloseSave').addEventListener('click', function(){ $('saveSheet').hidden = true; });
+$('saveSheet').addEventListener('click', function(e){
+  if(e.target === $('saveSheet')) $('saveSheet').hidden = true;
+});
+
+/* ================= Keyboard ================= */
+document.addEventListener('keydown', function(e){
+  var tag = (e.target.tagName || '').toLowerCase();
+  if(tag === 'input' || tag === 'textarea') return;
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){
+    e.preventDefault();
+    if(e.shiftKey) $('btnRedo').click(); else $('btnUndo').click();
+    return;
+  }
+  if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y'){ e.preventDefault(); $('btnRedo').click(); return; }
+  if(e.key === ' '){ spaceDown = true; canvas.className = 'tool-pan'; }
+  if(e.key === 'Delete' || e.key === 'Backspace'){
+    if(selectedId){ e.preventDefault(); $('btnDelete').click(); }
+    return;
+  }
+  if(e.key === 'Escape'){ selectedId = null; draw(); renderLayers(); renderSelPanel(); return; }
+  var map = { v:'select', h:'pan', d:'dot', c:'circle', e:'ellipse', r:'rect', l:'line', a:'arrow', p:'pen', t:'text' };
+  var t = map[e.key.toLowerCase()];
+  if(t && !e.ctrlKey && !e.metaKey) setTool(t);
+});
+document.addEventListener('keyup', function(e){
+  if(e.key === ' '){ spaceDown = false; setTool(tool); }
+});
+
+/* ================= PWA =================
+   Service worker dicoba dari akar situs dulu (deploy GitHub Pages:
+   cakupan penuh, app bisa dibuka offline). Bila berkas akar tidak ada —
+   misalnya di hosting artifact yang hanya menyajikan index.html + assets —
+   jatuh ke salinan di assets/; pendaftaran yang gagal di iframe tersandbox
+   diabaikan diam-diam, app tetap berjalan seperti biasa. */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js')
+      .catch(function(){ return navigator.serviceWorker.register('assets/sw.js'); })
+      .then(function(reg){
+        if(!reg) return;
+        reg.addEventListener('updatefound', function(){
+          var nw = reg.installing;
+          if(!nw) return;
+          nw.addEventListener('statechange', function(){
+            if(nw.state === 'installed' && !navigator.serviceWorker.controller){
+              toast('COC Strategy siap dipakai offline.');
+            }
+          });
+        });
+      })
+      .catch(function(){ /* lingkungan tanpa izin service worker */ });
+  });
+}
+
+var deferredInstall = null;
+var isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+function showInstallButton(){ if(!isStandalone) $('btnInstall').hidden = false; }
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault();
+  deferredInstall = e;
+  showInstallButton();
+});
+window.addEventListener('appinstalled', function(){
+  deferredInstall = null;
+  $('btnInstall').hidden = true;
+  toast('COC Strategy terpasang di perangkat ini.');
+});
+// iOS Safari tidak mengirim beforeinstallprompt: tombol tetap ditawarkan
+// dan kliknya menjelaskan jalur "Tambahkan ke Layar Utama".
+if(/iphone|ipad|ipod/i.test(navigator.userAgent || '')) showInstallButton();
+$('btnInstall').addEventListener('click', function(){
+  if(deferredInstall){
+    // Tampilkan dialog pemasangan bawaan browser (API beforeinstallprompt).
+    var showInstallDialog = deferredInstall.prompt;
+    showInstallDialog.call(deferredInstall);
+    deferredInstall.userChoice.then(function(choice){
+      if(choice && choice.outcome === 'accepted') $('btnInstall').hidden = true;
+      deferredInstall = null;
+    });
+  } else {
+    toast('Buka menu Bagikan di browser, lalu pilih "Tambahkan ke Layar Utama".');
+  }
+});
+window.addEventListener('offline', function(){ toast('Kamu sedang offline — tanda tetap tersimpan di perangkat ini.'); });
+window.addEventListener('online', function(){ toast('Kembali online.'); });
+
+/* ================= Init ================= */
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+setTool('select');
+renderLayers();
+syncHistoryButtons();
+restoreLast();
+})();
+</script>
+</body>
+</html>
