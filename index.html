@@ -503,7 +503,6 @@
           <input type="range" id="fillOpacityRange" min="5" max="90" value="25" step="5" aria-label="Kekuatan isi" />
         </div>
         <label class="check"><input type="checkbox" id="dashCheck" /> <span class="lbl-long">Garis putus-putus</span><span class="lbl-short">Putus-putus</span></label>
-        <label class="check"><input type="checkbox" id="snapCheck" checked /> <span class="lbl-long">Kenali bentuk dari coretan (lingkaran, kotak, garis)</span><span class="lbl-short">Kenali bentuk</span></label>
         <button class="btn layers-toggle" id="btnLayersToggle" type="button" aria-expanded="false">Layer <span class="count" id="layersCount">0</span></button>
       </section>
 
@@ -570,8 +569,7 @@ var style = {
   fontSize: 36,
   fill: false,
   fillOpacity: 0.25,
-  dashed: false,
-  snap: true
+  dashed: false
 };
 
 var view = { scale: 1, ox: 0, oy: 0 }; // screen = world*scale + offset
@@ -596,12 +594,12 @@ var HINTS = {
   select:'<strong>Pilih &amp; geser:</strong> klik tanda untuk memilih, tarik untuk memindah. Tarik bulatan kecil di ujung tanda untuk mengubah ukurannya. Klik ganda teks untuk mengedit.',
   pan:'<strong>Geser kanvas:</strong> tarik untuk menggeser tampilan. Roda mouse / cubit untuk memperbesar.',
   dot:'<strong>Titik:</strong> klik di mana saja untuk menaruh titik penanda — di dalam maupun di luar foto.',
-  circle:'<strong>Lingkaran:</strong> klik-tahan di titik tengah, lalu tarik keluar sejauh radius yang kamu mau. Lepaskan untuk selesai.',
+  circle:'<strong>Lingkaran:</strong> klik-tahan di titik tengah, lalu tarik keluar sejauh radius yang kamu mau. Arah tarikanmu jadi arah garis diagonal di dalam lingkaran.',
   ellipse:'<strong>Elips:</strong> klik-tahan lalu tarik membentuk kotak batas elips.',
   rect:'<strong>Kotak:</strong> klik-tahan lalu tarik membentuk kotak.',
   line:'<strong>Garis:</strong> klik-tahan di titik awal, tarik ke titik akhir, lalu lepaskan.',
   arrow:'<strong>Panah:</strong> klik-tahan di titik awal, tarik ke arah tujuan — ujung panah ada di titik akhir.',
-  pen:'<strong>Gambar bebas:</strong> tahan dan gerakkan untuk mencoret. Coretan yang mirip lingkaran, elips, kotak, atau garis lurus otomatis dirapikan jadi bentuk sempurna begitu dilepas.',
+  pen:'<strong>Gambar bebas:</strong> tahan dan gerakkan untuk mencoret. Garisnya dihaluskan otomatis supaya mengalir lembut dan tidak tajam — bentuknya tetap coretanmu, tidak diubah jadi lingkaran, kotak, atau bentuk lain.',
   text:'<strong>Teks:</strong> klik di posisi yang kamu mau, tulis, lalu tekan Enter.'
 };
 
@@ -644,8 +642,7 @@ function saveNow(){
   var state = {
     shapes: shapes, counters: counters,
     style: { color: style.color, width: style.width, fontSize: style.fontSize,
-             fill: style.fill, fillOpacity: style.fillOpacity, dashed: style.dashed,
-             snap: style.snap },
+             fill: style.fill, fillOpacity: style.fillOpacity, dashed: style.dashed },
     imgW: imgW, imgH: imgH, hasCanvasArea: hasCanvasArea,
     isBlank: isBlankCanvas, photoBlob: photoBlob, savedAt: Date.now()
   };
@@ -687,7 +684,6 @@ function restoreLast(){
         style.fill = !!st.style.fill;
         style.fillOpacity = st.style.fillOpacity || style.fillOpacity;
         style.dashed = !!st.style.dashed;
-        style.snap = st.style.snap !== false;
       }
       imgW = st.imgW; imgH = st.imgH;
       hasCanvasArea = true;
@@ -835,22 +831,28 @@ function drawShape(c, s){
       c.lineWidth = Math.max(2, s.width*0.7); c.strokeStyle = '#ffffff';
       c.stroke();
       break;
-    case 'circle':
-      c.beginPath(); c.arc(s.cx, s.cy, Math.max(0.1,s.r), 0, Math.PI*2);
+    case 'circle': {
+      var cr = Math.max(0.1, s.r);
+      c.beginPath(); c.arc(s.cx, s.cy, cr, 0, Math.PI*2);
       if(s.fill){ c.fillStyle = hexToRgba(s.color, s.fillOpacity); c.fill(); }
       c.stroke();
-      // Garis silang diameter tipis: horizontal + vertikal, bertemu tepat di titik tengah.
+      // Satu garis diagonal tipis membelah lingkaran dari tepi ke tepi,
+      // melewati titik tengah. Arahnya disimpan di s.angle — sudut tarikan
+      // jari saat lingkaran dibuat (atau saat handle-nya ditarik). Lingkaran
+      // lama tanpa angle memakai diagonal bawaan 45°.
       // Bagian dari objek lingkaran — ikut digeser, diubah ukuran, dan terekspor.
+      var da = (typeof s.angle === 'number' && isFinite(s.angle)) ? s.angle : Math.PI/4;
+      var ddx = Math.cos(da) * cr, ddy = Math.sin(da) * cr;
       c.save();
       c.setLineDash([]);
       c.lineWidth = Math.max(0.8, s.width * 0.32);
       c.globalAlpha = 0.75;
       c.beginPath();
-      c.moveTo(s.cx - s.r, s.cy); c.lineTo(s.cx + s.r, s.cy);
-      c.moveTo(s.cx, s.cy - s.r); c.lineTo(s.cx, s.cy + s.r);
+      c.moveTo(s.cx - ddx, s.cy - ddy); c.lineTo(s.cx + ddx, s.cy + ddy);
       c.stroke();
       c.restore();
       break;
+    }
     case 'ellipse':
       c.beginPath(); c.ellipse(s.cx, s.cy, Math.max(0.1,s.rx), Math.max(0.1,s.ry), 0, 0, Math.PI*2);
       if(s.fill){ c.fillStyle = hexToRgba(s.color, s.fillOpacity); c.fill(); }
@@ -914,7 +916,13 @@ function getHandles(s){
   var h = [];
   if(!s) return h;
   switch(s.type){
-    case 'circle': h.push({role:'r', x:s.cx + s.r, y:s.cy}); break;
+    case 'circle': {
+      // Handle duduk tepat di ujung garis diagonal, jadi menariknya
+      // mengubah radius sekaligus arah diagonalnya.
+      var ha = (typeof s.angle === 'number' && isFinite(s.angle)) ? s.angle : Math.PI/4;
+      h.push({role:'r', x:s.cx + s.r * Math.cos(ha), y:s.cy + s.r * Math.sin(ha)});
+      break;
+    }
     case 'ellipse':
       h.push({role:'rx', x:s.cx + s.rx, y:s.cy});
       h.push({role:'ry', x:s.cx, y:s.cy + s.ry});
@@ -1115,7 +1123,6 @@ function syncStyleUI(){
   $('fontOut').textContent = style.fontSize + ' px';
   $('fillCheck').checked = style.fill;
   $('dashCheck').checked = style.dashed;
-  $('snapCheck').checked = style.snap;
   $('fillOpacityRange').value = Math.round(style.fillOpacity*100);
   $('fillOpacityOut').textContent = Math.round(style.fillOpacity*100) + '%';
   $('fillOpacityField').style.display = style.fill ? 'block' : 'none';
@@ -1127,7 +1134,6 @@ $('widthRange').addEventListener('input', function(e){ style.width = +e.target.v
 $('fontRange').addEventListener('input', function(e){ style.fontSize = +e.target.value; syncStyleUI(); applyStyleToSelected(); });
 $('fillCheck').addEventListener('change', function(e){ style.fill = e.target.checked; syncStyleUI(); applyStyleToSelected(); });
 $('dashCheck').addEventListener('change', function(e){ style.dashed = e.target.checked; syncStyleUI(); applyStyleToSelected(); });
-$('snapCheck').addEventListener('change', function(e){ style.snap = e.target.checked; syncStyleUI(); });
 $('fillOpacityRange').addEventListener('input', function(e){ style.fillOpacity = +e.target.value/100; syncStyleUI(); applyStyleToSelected(); });
 syncStyleUI();
 
@@ -1264,11 +1270,12 @@ function moveShape(s, dx, dy){
   }
 }
 
-/* ================= Kenali bentuk dari coretan =================
-   Seperti "bentuk sempurna" di markup galeri iOS: coretan pensil yang
-   cukup mirip lingkaran / elips / kotak / garis lurus diganti bentuk
-   sempurnanya saat jari dilepas. Yang tidak dikenali tetap coretan,
-   hanya titik-titiknya disederhanakan supaya tidak berkelok-kelok. */
+/* ================= Penghalusan coretan bebas =================
+   Coretan TIDAK lagi ditebak jadi lingkaran / kotak / garis sempurna.
+   Bentuknya tetap persis coretan pengguna — hanya jalurnya dihaluskan
+   supaya tidak tajam dan tidak patah-patah: penyederhanaan ringan
+   membuang getaran kecil, lalu pemotongan sudut Chaikin membulatkan
+   setiap belokan, dan satu sapuan rata-rata menghaluskan sisanya. */
 function rdpSimplify(pts, eps){
   if(pts.length < 3) return pts;
   var keep = [];
@@ -1287,75 +1294,44 @@ function rdpSimplify(pts, eps){
   var out = pts.filter(function(p, i){ return keep[i]; });
   return out.length >= 2 ? out : pts;
 }
-function recognizeStroke(pts){
-  var n = pts.length;
-  if(n < 8) return null;
+function chaikinSmooth(pts, iterations){
+  var out = pts;
+  for(var it=0; it<iterations; it++){
+    if(out.length < 3) break;
+    var next = [out[0]];
+    for(var i=0; i<out.length-1; i++){
+      var p0 = out[i], p1 = out[i+1];
+      next.push({ x: p0.x*0.75 + p1.x*0.25, y: p0.y*0.75 + p1.y*0.25 });
+      next.push({ x: p0.x*0.25 + p1.x*0.75, y: p0.y*0.25 + p1.y*0.75 });
+    }
+    next.push(out[out.length-1]);
+    out = next;
+  }
+  return out;
+}
+function smoothStroke(pts){
+  if(!pts || pts.length < 3) return pts;
   var minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
   pts.forEach(function(p){
     minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
     maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
   });
-  var bw = maxX - minX, bh = maxY - minY;
-  var diag = Math.hypot(bw, bh);
-  if(diag < 12) return null;
-  var first = pts[0], last = pts[n-1];
-  var gap = Math.hypot(first.x - last.x, first.y - last.y);
-  var closed = gap <= Math.max(10, diag * 0.22);
-  if(closed){
-    // Lingkaran: jarak tiap titik ke titik tengah menyebar sempit.
-    var cx = 0, cy = 0;
-    pts.forEach(function(p){ cx += p.x; cy += p.y; });
-    cx /= n; cy /= n;
-    var rs = pts.map(function(p){ return Math.hypot(p.x - cx, p.y - cy); });
-    var R = rs.reduce(function(a, b){ return a + b; }, 0) / n;
-    if(R >= 6){
-      var varSum = rs.reduce(function(a, r){ return a + (r - R) * (r - R); }, 0);
-      var sd = Math.sqrt(varSum / n);
-      var aspect = bw / Math.max(1, bh);
-      if(sd / R < 0.20 && aspect > 0.72 && aspect < 1.38){
-        return { type:'circle', cx:cx, cy:cy, r:R };
-      }
-    }
-    // Kotak: sebagian besar titik menempel ke salah satu sisi kotak batas.
-    if(bw >= 10 && bh >= 10){
-      var tolE = 0.16 * Math.min(bw, bh), near = 0;
-      pts.forEach(function(p){
-        var dEdge = Math.min(p.x - minX, maxX - p.x, p.y - minY, maxY - p.y);
-        if(dEdge <= tolE) near++;
-      });
-      if(near / n >= 0.82){
-        return { type:'rect', x:minX, y:minY, w:bw, h:bh };
-      }
-    }
-    // Elips: titik-titik menempel ke elips yang memenuhi kotak batas.
-    var rx = bw / 2, ry = bh / 2;
-    if(rx >= 6 && ry >= 6){
-      var ecx = (minX + maxX) / 2, ecy = (minY + maxY) / 2;
-      var err = 0, bad = 0;
-      pts.forEach(function(p){
-        var v = Math.sqrt(Math.pow((p.x - ecx) / rx, 2) + Math.pow((p.y - ecy) / ry, 2));
-        err += Math.abs(v - 1);
-        if(Math.abs(v - 1) > 0.35) bad++;
-      });
-      if(err / n < 0.13 && bad / n < 0.15){
-        return { type:'ellipse', cx:ecx, cy:ecy, rx:rx, ry:ry };
-      }
-    }
-    return null;
-  }
-  // Terbuka: garis lurus bila semua titik dekat ke ruas awal–akhir.
-  var L = Math.hypot(last.x - first.x, last.y - first.y);
-  if(L >= 12){
-    var maxDev = 0;
-    pts.forEach(function(p){
-      var d = distToSeg(p.x, p.y, first.x, first.y, last.x, last.y);
-      if(d > maxDev) maxDev = d;
+  var diag = Math.hypot(maxX-minX, maxY-minY);
+  // Buang getaran mikro dulu supaya Chaikin tidak memperbanyak titik sisa getaran.
+  var eps = Math.max(0.5, diag * 0.006);
+  var simplified = rdpSimplify(pts.slice(), eps);
+  if(simplified.length < 3) return simplified;
+  var smoothed = chaikinSmooth(simplified, 2);
+  if(smoothed.length < 3) return smoothed;
+  var out = [smoothed[0]];
+  for(var i=1; i<smoothed.length-1; i++){
+    out.push({
+      x: (smoothed[i-1].x + smoothed[i].x*2 + smoothed[i+1].x) / 4,
+      y: (smoothed[i-1].y + smoothed[i].y*2 + smoothed[i+1].y) / 4
     });
-    if(maxDev <= Math.max(3, L * 0.06)){
-      return { type:'line', x1:first.x, y1:first.y, x2:last.x, y2:last.y };
-    }
   }
-  return null;
+  out.push(smoothed[smoothed.length-1]);
+  return out;
 }
 
 /* ================= Pointer interaction ================= */
@@ -1495,7 +1471,7 @@ canvas.addEventListener('pointerdown', function(e){
   }
   // drawing tools
   var st = baseStyle();
-  if(activeTool === 'circle') draft = Object.assign({ type:'circle', cx:w.x, cy:w.y, r:0 }, st);
+  if(activeTool === 'circle') draft = Object.assign({ type:'circle', cx:w.x, cy:w.y, r:0, angle: Math.PI/4 }, st);
   else if(activeTool === 'ellipse') draft = Object.assign({ type:'ellipse', cx:w.x, cy:w.y, rx:0, ry:0, _x0:w.x, _y0:w.y }, st);
   else if(activeTool === 'rect') draft = Object.assign({ type:'rect', x:w.x, y:w.y, w:0, h:0 }, st);
   else if(activeTool === 'line') draft = Object.assign({ type:'line', x1:w.x, y1:w.y, x2:w.x, y2:w.y }, st);
@@ -1544,7 +1520,14 @@ canvas.addEventListener('pointermove', function(e){
   }
   if(drag.mode === 'handle'){
     var s = drag.shape;
-    if(drag.role === 'r') s.r = Math.max(2, Math.hypot(w.x - s.cx, w.y - s.cy));
+    if(drag.role === 'r'){
+      var hr = Math.hypot(w.x - s.cx, w.y - s.cy);
+      s.r = Math.max(2, hr);
+      // Arah diagonal mengikuti posisi handle: tarik handle memutar,
+      // diagonalnya ikut memutar. Dekat titik tengah arah lama dipertahankan
+      // supaya tidak meloncat saat radius sangat kecil.
+      if(hr > 4) s.angle = Math.atan2(w.y - s.cy, w.x - s.cx);
+    }
     else if(drag.role === 'rx') s.rx = Math.max(2, Math.abs(w.x - s.cx));
     else if(drag.role === 'ry') s.ry = Math.max(2, Math.abs(w.y - s.cy));
     else if(drag.role === 'se'){ s.w = w.x - s.x; s.h = w.y - s.y; }
@@ -1553,7 +1536,13 @@ canvas.addEventListener('pointermove', function(e){
     queueDraw(); return;
   }
   if(drag.mode === 'draw' && draft){
-    if(draft.type === 'circle') draft.r = Math.hypot(w.x - draft.cx, w.y - draft.cy);
+    if(draft.type === 'circle'){
+      var cdx = w.x - draft.cx, cdy = w.y - draft.cy;
+      draft.r = Math.hypot(cdx, cdy);
+      // Arah diagonal = arah tarikan jari dari titik tengah. Hanya diperbarui
+      // sesudah tarikan cukup jauh, supaya di awal garisnya tidak berputar liar.
+      if(draft.r > 4) draft.angle = Math.atan2(cdy, cdx);
+    }
     else if(draft.type === 'ellipse'){
       draft.cx = (draft._x0 + w.x)/2; draft.cy = (draft._y0 + w.y)/2;
       draft.rx = Math.abs(w.x - draft._x0)/2; draft.ry = Math.abs(w.y - draft._y0)/2;
@@ -1608,20 +1597,10 @@ function endPointer(e){
     if(d.type === 'rect' && (Math.abs(d.w) < 3 || Math.abs(d.h) < 3)) ok = false;
     if((d.type === 'line' || d.type === 'arrow') && Math.hypot(d.x2-d.x1, d.y2-d.y1) < 4) ok = false;
     if(d.type === 'pen' && d.points.length < 2) ok = false;
-    if(ok && d.type === 'pen' && style.snap){
-      var rec = recognizeStroke(d.points);
-      if(rec){
-        var nd = Object.assign({}, d, rec);
-        delete nd.points;
-        pushHistory(); addShape(nd);
-        toast('Coretan dikenali sebagai ' + TYPE_NAMES[nd.type].toLowerCase() + '.');
-        d = null;
-      } else {
-        // Tidak dikenali: tetap coretan, tapi titiknya disederhanakan
-        // supaya goresan kecil yang berkelok-kelok hilang.
-        var pb = shapeBounds(d);
-        d.points = rdpSimplify(d.points, Math.max(1, Math.hypot(pb.maxX - pb.minX, pb.maxY - pb.minY) * 0.012));
-      }
+    if(ok && d.type === 'pen'){
+      // Tetap coretan — tidak diubah jadi bentuk lain. Hanya dihaluskan
+      // supaya belokannya lembut dan tidak tajam.
+      d.points = smoothStroke(d.points);
     }
     if(ok && d){ pushHistory(); addShape(d); }
   }
