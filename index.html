@@ -594,7 +594,7 @@ var HINTS = {
   select:'<strong>Pilih &amp; geser:</strong> klik tanda untuk memilih, tarik untuk memindah. Tarik bulatan kecil di ujung tanda untuk mengubah ukurannya. Klik ganda teks untuk mengedit.',
   pan:'<strong>Geser kanvas:</strong> tarik untuk menggeser tampilan. Roda mouse / cubit untuk memperbesar.',
   dot:'<strong>Titik:</strong> klik di mana saja untuk menaruh titik penanda — di dalam maupun di luar foto.',
-  circle:'<strong>Lingkaran:</strong> klik-tahan di titik tengah, lalu tarik keluar sejauh radius yang kamu mau. Arah tarikanmu jadi arah garis diagonal di dalam lingkaran.',
+  circle:'<strong>Lingkaran:</strong> klik-tahan di titik tengah, lalu tarik keluar sejauh radius yang kamu mau. Arah tarikanmu jadi arah kedua garis diagonal di dalam lingkaran.',
   ellipse:'<strong>Elips:</strong> klik-tahan lalu tarik membentuk kotak batas elips.',
   rect:'<strong>Kotak:</strong> klik-tahan lalu tarik membentuk kotak.',
   line:'<strong>Garis:</strong> klik-tahan di titik awal, tarik ke titik akhir, lalu lepaskan.',
@@ -836,19 +836,23 @@ function drawShape(c, s){
       c.beginPath(); c.arc(s.cx, s.cy, cr, 0, Math.PI*2);
       if(s.fill){ c.fillStyle = hexToRgba(s.color, s.fillOpacity); c.fill(); }
       c.stroke();
-      // Satu garis diagonal tipis membelah lingkaran dari tepi ke tepi,
-      // melewati titik tengah. Arahnya disimpan di s.angle — sudut tarikan
-      // jari saat lingkaran dibuat (atau saat handle-nya ditarik). Lingkaran
-      // lama tanpa angle memakai diagonal bawaan 45°.
+      // Dua garis diagonal tipis membelah lingkaran dari tepi ke tepi,
+      // melewati titik tengah, membentuk tanda silang miring (X) di dalam
+      // lingkaran seperti versi lama. Arahnya disimpan di s.angle — sudut
+      // tarikan jari saat lingkaran dibuat (atau saat handle-nya ditarik);
+      // diagonal kedua tegak lurus terhadap yang pertama (angle + 90°).
+      // Lingkaran lama tanpa angle memakai diagonal bawaan 45°.
       // Bagian dari objek lingkaran — ikut digeser, diubah ukuran, dan terekspor.
       var da = (typeof s.angle === 'number' && isFinite(s.angle)) ? s.angle : Math.PI/4;
       var ddx = Math.cos(da) * cr, ddy = Math.sin(da) * cr;
+      var ddx2 = Math.cos(da + Math.PI/2) * cr, ddy2 = Math.sin(da + Math.PI/2) * cr;
       c.save();
       c.setLineDash([]);
       c.lineWidth = Math.max(0.8, s.width * 0.32);
       c.globalAlpha = 0.75;
       c.beginPath();
       c.moveTo(s.cx - ddx, s.cy - ddy); c.lineTo(s.cx + ddx, s.cy + ddy);
+      c.moveTo(s.cx - ddx2, s.cy - ddy2); c.lineTo(s.cx + ddx2, s.cy + ddy2);
       c.stroke();
       c.restore();
       break;
